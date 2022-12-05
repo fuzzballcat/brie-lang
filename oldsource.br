@@ -1,0 +1,176 @@
+x = (1 + 1) * 2 - 4 / 2
+y = (6 + 4 / 2) * 3 - 3
+
+z = 43
+
+print "Comparing " + (str x * y) + " with " + (str z)
+print (str x * y) + " is _ " + (str z) + ":\n"
+
+if x * y > z:
+  print "greater than"
+
+if x * y < z:
+  print "less than"
+
+if x * y >= z:
+  print "greater than or equal to"
+
+if x * y <= z:
+  print "less than or equal to"
+
+if x * y != z:
+  print "not equal to"
+
+if x * y == z:
+  print "equal to"
+
+print "\nDone!\n\n\nPart 2:\n"
+
+x = 1
+y = 1
+
+# casts
+print "X is " + (str x) + " and Y is " + (str y)
+
+if x < y:
+  print "x < y"
+else:
+  if x == y:
+    print "x = y"
+  else:
+    print "x > y"
+
+# multiline string
+print "\n\n\
+\nPart 3:\n"
+
+if 1:
+  shouldnt_work = "some fib:"
+
+print shouldnt_work
+
+a = 0
+b = 1
+i = 1
+while a < 255:
+  k = a
+  a = b
+  b = k + b
+  print (str i) + " fib num = " + (str a)
+  i = i + 1
+
+print "\n\nPart 4:\n"
+
+x = "a string"
+print "Right now, X is \"" + x + "\""
+
+def myfunc:
+  my x
+  print (str x) + " plus one is " + (str x + 1)
+
+myfunc 3
+myfunc 4
+
+def myfunc:
+  my x
+  my y
+  print "I was given " + (str x) + " and " + (str y)
+
+myfunc 3, 4
+
+print "X is still \"" + (str x) + "\", even though it was used as an argument\n"
+
+def factorial_inner:
+  my x
+  my y
+  if x < 2:
+    print (str y)
+  else:
+    factorial_inner x-1, y*x
+
+def factorial:
+  my x
+  print "Factorial of " + (str x) + " is:"
+  factorial_inner x, 1
+
+factorial 4
+
+# this_should_fail 1
+# print "\nIn bad_fn:"
+
+def bad_fn:
+  my x
+  print "x is " + (str x)
+  my y
+  print "y is " + (str y)
+
+# bad_fn 1
+
+print "\n10th fibonacci number is:"
+
+def fib:
+  my x
+  if x < 3:
+    return 1
+  return (fib x-1) + (fib x-2)
+
+print (fib 10)
+
+print "\nIn bad_fn:"
+print "Return value of bad_fn is: " + (str (bad_fn 1, 2))
+
+print "\nWhat is your name?"
+name = input ">> "
+print "Hi, " + name + "!"
+
+if name == "Guido van Rossum":
+  print "You made Python!"
+
+if !(name == "Guido van Rossum"):
+  print "You did not make Python, Guido van Rossum did."
+
+# demo
+
+def fib:
+  my x
+  if x < 3:
+    return 1
+  return (fib x-1) + (fib x-2)
+
+def factorial:
+  my x
+  if x == 1:
+    return x
+  return x * (factorial x-1)
+
+userExiting = 0
+while userExiting == 0:
+  print "Welcome to the calculator!  What would you like to do?\n\
+1 - Exit\n\
+2 - Calculate factorial\n\
+3 - Calculate fibonacci"
+  userInput = input ">> "
+  if userInput != "1" and userInput != "2" and userInput != "3":
+    print "Invalid option!  Try again."
+  else:
+    userInput = int userInput
+    if userInput == 1:
+      userExiting = 1
+    if userInput == 2:
+      userInput = int (input "What number? ")
+      print "Factorial of " + (str userInput) + " is " + (str (factorial userInput))
+    if userInput == 3:
+      userInput = int (input "What number? ")
+      print "The #" + (str userInput) + " fibonacci number is " + (str (fib userInput))
+
+# Years later update: Whoa, I didn't even realize this would work, the `my` syntax is smarter than I thought!
+
+def varargs:
+  my num
+  a = 0
+  while a < num:
+    my q
+    print q
+    a = a + 1
+
+varargs 2, "Hi", "from a varargs function!"

@@ -1,0 +1,53 @@
+# oh my gosh
+# i've implemented sequences without implementing arrays
+# aaaaaaaaaa
+
+def range:
+  my start; end
+  i = start
+  yield (end - start)
+  while i < end:
+    yield i
+    i = i + 1
+
+def map:
+  my function
+  my len
+  i = 0
+  yield len
+  while i < len:
+    my x
+    yield (function x)
+    i = i + 1
+
+def get:
+  my index
+  my len
+  i = 0
+  val = None
+  while i < len:
+    my x
+    if i == index:
+      val = x
+    i = i + 1
+  return val
+
+# hmm can it be done?
+def getter:
+  my len
+  i = 0
+  while i < len:
+    my x
+    i = i + 1
+  my index
+
+print (getter (range 1, 4), 0)
+
+# with closurey?
+def getter_clsrs:
+  my len
+  i = 0
+  while i < len:
+    my x
+    i = i + 1
+  my index

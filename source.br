@@ -1,0 +1,6 @@
+def returnstuff:
+  my _
+  yield 1
+  return 2
+
+x, y = returnstuff ()
