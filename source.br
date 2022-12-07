@@ -1,6 +1,13 @@
-def returnstuff:
-  my _
-  yield 1
-  return 2
+lazy parapptest:
+  my a; b; c; d
+  print a; b; c; d
 
-x, y = returnstuff ()
+defn eager:
+  my a
+  print a
+
+x = parapptest 1
+x = x 2, 3
+
+x! 4
+eager! 4

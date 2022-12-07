@@ -21,6 +21,8 @@ typedef enum {
   T_AND,
   T_OR,
 
+  T_LAZY_BANG,
+
   T_PLUS,
   T_MINUS,
   T_SLASH,
@@ -30,6 +32,7 @@ typedef enum {
   T_ELSE,
   T_WHILE,
   T_DEF,
+  T_LAZY,
   T_MY,
   T_NONE,
 

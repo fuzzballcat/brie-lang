@@ -10,6 +10,7 @@ int hasFinalDedent = 0;
 int emitDedents = 0;
 int emitFakeNewline = 0;
 int dupTimes = 0;
+int EMIT_LAZY_BANG = 0;
 
 struct Scanner {
   char* current;
@@ -78,6 +79,12 @@ void skip_ws() {
 }
 
 struct Token* scan(void) {
+  if(EMIT_LAZY_BANG){
+    EMIT_LAZY_BANG = 0;
+    next();
+    return tok(T_LAZY_BANG, scanner.current, 1, scanner.line, scanner.col);
+  }
+  
   if(!hasInitIndent) {
     hasInitIndent = 1;
     return tok(T_INDENT, scanner.current, 1, scanner.line, scanner.col);
@@ -118,16 +125,22 @@ struct Token* scan(void) {
       return tok(T_IF, current, len, scanner.line, scanner.col - len);
     } else if(len == 2 && strncmp(current, "or", 2) == 0) {
       return tok(T_ELSE, current, len, scanner.line, scanner.col - len);
-    } else if(len == 3 && strncmp(current, "def", 3) == 0) {
-      return tok(T_DEF, current, len, scanner.line, scanner.col - len);
     } else if(len == 2 && strncmp(current, "do", 2) == 0) {
       return tok(T_WHILE, current, len, scanner.line, scanner.col - len);
     } else if(len == 2 && strncmp(current, "my", 2) == 0) {
       return tok(T_MY, current, len, scanner.line, scanner.col - len);
     } else if(len == 4 && strncmp(current, "None", 4) == 0) {
       return tok(T_NONE, current, len, scanner.line, scanner.col - len);
+    } else if(len == 4 && strncmp(current, "defn", 4) == 0) {
+      return tok(T_DEF, current, len, scanner.line, scanner.col - len);
+    } else if(len == 4 && strncmp(current, "lazy", 4) == 0) {
+      return tok(T_LAZY, current, len, scanner.line, scanner.col - len);
     }
 
+    // context-sensitive lexing
+    if(*scanner.current == '!'){
+      EMIT_LAZY_BANG = 1;
+    }
     return tok(T_ID, current, len, scanner.line, scanner.col - len);
   }
 
@@ -354,6 +367,9 @@ void printTokType(TokenType typ) {
     case T_NOT:
       printf("T_NOT"); break;
 
+    case T_LAZY_BANG:
+      printf("T_LAZY_BANG"); break;
+
     case T_PLUS:
       printf("T_PLUS"); break;
     case T_MINUS:
@@ -371,6 +387,8 @@ void printTokType(TokenType typ) {
       printf("T_WHILE"); break;
     case T_DEF:
       printf("T_DEF"); break;
+    case T_LAZY:
+      printf("T_LAZY"); break;
     case T_MY:
       printf("T_MY"); break;
     case T_NONE:

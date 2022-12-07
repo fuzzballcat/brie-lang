@@ -179,10 +179,49 @@ vm.yieldvals[vm.yieldvals_top - 1];
       case OP_CALL: {
         struct Value fn = pop();
         struct Value val = pop();
-        i += 2;
+        i += 3;
         double call_arity = vm.chunk->pool[PARSE_LONG(i - 1)].as.num.num;
 
-        if (fn.type == FUN) {
+        if (vm.chunk->code[i - 2] && fn.type == PARAPP){ // force
+          // note: force on regular function = no effect
+          
+          push(val);
+          val = fn.as.parapp.args[0];
+          
+          for(int z = fn.as.parapp.args_len - 1; z >= 1; z --){
+            push(fn.as.parapp.args[z]);
+          }
+
+          // hacky hacky to copy logic
+          fn = (struct Value){
+            .type = FUN,
+            .as.fun = {
+              .name = fn.as.parapp.fn.name,
+              .label = fn.as.parapp.fn.label,
+              .is_lazy = 0
+            }
+          };
+        }
+        
+        if(fn.type == PARAPP){
+          fn.as.parapp.args = realloc(fn.as.parapp.args, (fn.as.parapp.args_len + call_arity) * sizeof(struct Value));
+          fn.as.parapp.args[fn.as.parapp.args_len] = val;
+          for(int z = fn.as.parapp.args_len + 1; z < fn.as.parapp.args_len + call_arity; z ++){
+            fn.as.parapp.args[z] = pop();
+          }
+          
+          fn.as.parapp.args_len += call_arity;
+
+          push(fn);
+        } else if(fn.type == FUN && fn.as.fun.is_lazy){
+          struct Value* args = malloc(call_arity * sizeof(struct Value));
+          args[0] = val;
+          for(int z = 1; z < call_arity; z ++){
+            args[z] = pop();
+          }
+
+          push(PARAPP_VALUE(fn.as.fun.name, fn.as.fun.label, fn.as.fun.is_lazy,args,call_arity));
+        } else if (fn.type == FUN) {
           vm.callstack[vm.callstack_top] = i;
           vm.callstack_top ++;
 
@@ -355,7 +394,7 @@ vm.yieldvals[vm.yieldvals_top - 1];
         struct Value val = pop();
         char* str = vm.chunk->pool[PARSE_LONG(i + 1)].as.string.str;
         hash_insert(varmap, str, val);
-        push(val);
+        //push(val);
         i += 2;
         break;
       }
@@ -513,8 +552,8 @@ vm.yieldvals[vm.yieldvals_top - 1];
       }
 
       case DEF_LBL: {
-        hash_insert(varmap, vm.chunk->pool[PARSE_LONG(i + 1)].as.string.str, FUN_VALUE(vm.chunk->pool[PARSE_LONG(i + 1)].as.string.str, i + 1));
-        i += 2;
+        hash_insert(varmap, vm.chunk->pool[PARSE_LONG(i + 1)].as.string.str, FUN_VALUE(vm.chunk->pool[PARSE_LONG(i + 1)].as.string.str, i + 2, vm.chunk->code[i + 3]));
+        i += 3;
         break;
       }
     }

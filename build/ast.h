@@ -27,6 +27,7 @@ struct ExprNode {
       struct ExprNode* callee;
       struct ArgumentObject** arguments;
       int num_of_argsets;
+      int force; // parapp lazy force
     } function_call;
 
     struct {
@@ -38,7 +39,8 @@ struct ExprNode {
     } id_expr;
 
     struct {
-      struct ExprNode* a;
+      struct ExprNode** a_s;
+      int a_s_len;
       struct ExprNode* b;
     } assignment_expr;
 
@@ -101,6 +103,7 @@ struct StmtNode {
     struct {
       struct Token name;
       struct StmtNode* stmts;
+      int is_lazy;
     } fn_decl;
 
     struct {

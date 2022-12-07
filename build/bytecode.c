@@ -23,8 +23,10 @@ int print_opcode(struct Chunk* chunk, int i) {
       return 1;
     
     case OP_CALL:
-      printf("OP_CALL:     %g\n", chunk->pool[PARSE_LONG(i + 1)].as.num.num);
-      return 3;
+      printf("OP_CALL:     %g", chunk->pool[PARSE_LONG(i + 2)].as.num.num);
+      if(chunk->code[i + 1]) printf(" [force]");
+      printf("\n");
+      return 4;
     case OP_CONSTANT:
       printf("OP_CONSTANT: ");
       printValue(chunk->pool[PARSE_LONG(i + 1)]);
@@ -74,8 +76,8 @@ int print_opcode(struct Chunk* chunk, int i) {
     case JUMP_BACK:
       printf("JUMP_BACK:   %d\n", PARSE_LONG(i + 1)); return 3;
     case DEF_LBL:
-      printf("DEF_LBL:     %s\n", chunk->pool[PARSE_LONG(i + 1)].as.string.str);
-      return 3;
+      printf("DEF_LBL:     %s (lz: %d)\n", chunk->pool[PARSE_LONG(i + 1)].as.string.str, chunk->code[i + 3]);
+      return 4;
     case OP_RET:
       printf("OP_RET\n");
       return 1;

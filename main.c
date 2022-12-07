@@ -42,7 +42,7 @@ char *read_file(char *fname) {
 }
 
 int main(void) {
-  char *contents = read_file("source.fpy");
+  char *contents = read_file("source.br");
 
   initScanner(contents);
   initChunk(&mainChunk);

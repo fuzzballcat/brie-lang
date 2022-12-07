@@ -8,6 +8,7 @@ void printExprNode(struct ExprNode* node) {
     case NoneExpr: printf("None"); break;
     case FunctionCall:
       printExprNode(node->as.function_call.callee);
+      if(node->as.function_call.force) printf("!");
       printf(" (");
       for(int i = 0; i < node->as.function_call.num_of_argsets; i ++) {
         for(int q = 0; q < node->as.function_call.arguments[i]->arity; q ++){
@@ -28,7 +29,10 @@ void printExprNode(struct ExprNode* node) {
       break;
     
     case AssignmentExpr:
-      printExprNode(node->as.assignment_expr.a);
+      for(int i = 0; i < node->as.assignment_expr.a_s_len; i ++){
+        printExprNode(node->as.assignment_expr.a_s[i]);
+        if(i+1 < node->as.assignment_expr.a_s_len) printf(", ");
+      }
       printf(" = ");
       printExprNode(node->as.assignment_expr.b);
       break;
@@ -90,7 +94,8 @@ void printStmtNode(struct StmtNode* node) {
       break;
 
     case FnDecl:
-      printf("def ");
+      if(node->as.fn_decl.is_lazy) printf("lazy ");
+      else printf("def ");
       printf("%.*s", node->as.fn_decl.name.length, node->as.fn_decl.name.start);
       printf(": {\n");
       printStmtNode(node->as.fn_decl.stmts);

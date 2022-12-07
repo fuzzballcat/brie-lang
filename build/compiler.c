@@ -68,6 +68,9 @@ void exprBytecode(struct ExprNode* node) {
         exprBytecode(node->as.function_call.callee);
         writeConstant(NUM_VALUE(node->as.function_call.arguments[seq_times]->arity));
         writeChunk(OP_CALL, node->lineno);
+        
+        writeChunk(node->as.function_call.force, node->lineno);
+        
         writeLong(currentChunk()->poollen - 1, node->lineno);  
       }
       break;
@@ -172,16 +175,19 @@ void exprBytecode(struct ExprNode* node) {
     case AssignmentExpr: {
       exprBytecode(node->as.assignment_expr.b);
 
-      struct Token* id = node->as.assignment_expr.a->as.id_expr.id;
+      for(int i = 0; i < node->as.assignment_expr.a_s_len; i ++){
+        struct Token* id = node->as.assignment_expr.a_s[i]->as.id_expr.id;
 
-      int len = id->length;
-      char* str = malloc(len + 1);
-      memcpy(str, id->start, len);
-      str[len] = '\0';
-
-      writeConstant(STRING_VALUE(str));
-      writeChunk(OP_ASSIGN, node->lineno);
-      writeLong(currentChunk()->poollen - 1, node->lineno);
+        int len = id->length;
+        char* str = malloc(len + 1);
+        memcpy(str, id->start, len);
+        str[len] = '\0';
+  
+        writeConstant(STRING_VALUE(str));
+        writeChunk(OP_ASSIGN, node->lineno);
+        writeLong(currentChunk()->poollen - 1, node->lineno);
+      }
+      
       break;
     }
     case BinopExpr: {
@@ -306,6 +312,9 @@ void generateBytecode(struct StmtNode* node) {
       str[len] = '\0';
       writeConstant(STRING_VALUE(str));
       writeLong(currentChunk()->poollen - 1, node->lineno);
+
+      // lazy
+      writeChunk((uint8_t)node->as.fn_decl.is_lazy, node->lineno);
 
       writeChunk(JUMP, node->lineno);
       writeLong(0, node->lineno);

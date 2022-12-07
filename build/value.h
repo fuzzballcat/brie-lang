@@ -7,7 +7,8 @@ struct Value {
     NATIVEFN,
     NUM,
     FUN,
-    NONE
+    NONE,
+    PARAPP
   } type;
 
   union {
@@ -26,7 +27,19 @@ struct Value {
     struct {
       char* name;
       int label;
+      int is_lazy;
     } fun;
+
+    struct {
+      struct {
+        char* name;
+        int label;
+        int is_lazy;
+      } fn; // extremely cheaty, but we are avoiding malloc
+
+      struct Value* args;
+      int args_len;
+    } parapp;
   } as;
 };
 
@@ -41,7 +54,8 @@ struct Value toStrVal(int line, struct Value);
 #define STRING_VALUE(x) (struct Value){ .type = STRING, .as.string.str = x }
 #define NATIVEFN_VALUE(nm) (struct Value){ .type = NATIVEFN, .as.nativefn.name = nm }
 #define NUM_VALUE(nm) (struct Value){ .type = NUM, .as.num.num = nm }
-#define FUN_VALUE(nm,lbl) (struct Value){ .type = FUN, .as.fun = { .name = nm, .label = lbl } }
+#define FUN_VALUE(nm,lbl,islzy) (struct Value){ .type = FUN, .as.fun = { .name = nm, .label = lbl, .is_lazy = islzy } }
 #define NONE_VALUE() (struct Value){ .type = NONE }
+#define PARAPP_VALUE(fnname,fnlbl,fnislazy,ags,agslen) (struct Value){ .type = PARAPP, .as.parapp = { .fn = { .name = fnname, .label = fnlbl, .is_lazy = fnislazy }, .args = ags, .args_len = agslen } }
 
 #endif

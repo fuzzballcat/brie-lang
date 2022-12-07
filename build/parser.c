@@ -183,8 +183,14 @@ struct ExprNode* parse_binop() {
 struct ExprNode* parse_funcall() {
   int line = parser.current->line;
   struct ExprNode* atom = parse_binop();
-  if(!(parser.current->type != T_SEP && parser.current->type != T_EOF && parser.current->type != T_DEDENT && parser.current->type != T_RPAR && parser.current->type != T_COLON && parser.current->type != T_EQ) && parser.current->type != T_SEMICOLON) return atom;
+  if(!(parser.current->type != T_SEP && parser.current->type != T_EOF && parser.current->type != T_DEDENT && parser.current->type != T_RPAR && parser.current->type != T_COLON && parser.current->type != T_EQ && parser.current->type != T_COMMA) && parser.current->type != T_SEMICOLON) return atom;
 
+  int is_parapp_force = 0;
+  if(parser.current->type == T_LAZY_BANG){
+    advance();
+    is_parapp_force = 1;
+  }
+  
   // know it is funcall now
   struct ArgumentObject** semiseps = malloc(1 * sizeof(struct ArgumentObject*));
   int semiseps_len = 0, semiseps_cap = 1;
@@ -224,23 +230,13 @@ malloc(sizeof(struct ArgumentObject));
   } while(1);
 
   struct ExprNode* fcall = (struct ExprNode*)malloc(sizeof(struct ExprNode));
-  *fcall = (struct ExprNode){ .lineno = line, .type = FunctionCall, .as.function_call = { .callee = atom, .arguments = semiseps, .num_of_argsets = semiseps_len } };
+  *fcall = (struct ExprNode){ .lineno = line, .type = FunctionCall, .as.function_call = { .callee = atom, .arguments = semiseps, .num_of_argsets = semiseps_len, .force = is_parapp_force } };
   return fcall;
 }
 
 struct ExprNode* parse_expression() {
-  int line = parser.current->line;
   struct ExprNode* atom = parse_funcall();
-  if (parser.current->type == T_EQ) {
-    advance();
-    if(!is_assignable(atom)) error(parser.current, "Cannot assign to non-assignable value!");
-
-    struct ExprNode* value = parse_funcall();
-    
-    struct ExprNode* assignment = (struct ExprNode*)malloc(sizeof(struct ExprNode));
-    *assignment = (struct ExprNode){ .lineno = line, .type = AssignmentExpr, .as.assignment_expr = { .a = atom, .b = value } };
-    return assignment;
-  } else return atom;
+  return atom;
 }
 
 struct StmtNode* parse_statement() {
@@ -320,7 +316,8 @@ struct StmtNode* parse_statement() {
     return stmt;
   }
 
-  else if (parser.current->type == T_DEF) {
+  else if (parser.current->type == T_DEF || parser.current->type == T_LAZY) {
+    int is_lazy = parser.current->type == T_LAZY;
     advance();
 
     expect(T_ID, "Function name must be valid identifier!");
@@ -331,7 +328,7 @@ struct StmtNode* parse_statement() {
     struct StmtNode* stmts = parse_block();
 
     struct StmtNode* stmt = (struct StmtNode*)malloc(sizeof(struct StmtNode));
-    *stmt = (struct StmtNode){ .lineno = line, .type = FnDecl, .as.fn_decl = { .name = name, .stmts = stmts} };
+    *stmt = (struct StmtNode){ .lineno = line, .type = FnDecl, .as.fn_decl = { .name = name, .stmts = stmts, .is_lazy = is_lazy } };
     return stmt;
   }
 
@@ -361,6 +358,34 @@ struct StmtNode* parse_statement() {
   }
 
   struct ExprNode* expr = parse_expression();
+  if (parser.current->type == T_EQ || parser.current->type == T_COMMA) {
+    struct ExprNode** exprs = malloc(2 * sizeof(struct ExprNode*));
+    exprs[0] = expr;
+    int exprs_top = 1, exprs_size = 2;
+
+    while(parser.current->type == T_COMMA){
+      advance();
+
+      exprs[exprs_top] = parse_funcall();
+      if(!is_assignable(exprs[exprs_top])) error(parser.current, "Cannot assign to non-assignable value!");
+      
+      exprs_top ++;
+      if(exprs_top >= exprs_size) {
+        exprs_size *= 2;
+        exprs = realloc(exprs, exprs_size * sizeof(struct ExprNode*));
+      }
+    }
+      
+    expect(T_EQ, "Expect equals sign to commence assignment!");
+    
+    struct ExprNode* value = parse_funcall();
+    
+    struct ExprNode* assignment = (struct ExprNode*)malloc(sizeof(struct ExprNode));
+    *assignment = (struct ExprNode){ .lineno = line, .type = AssignmentExpr, .as.assignment_expr = { .a_s = exprs, .a_s_len = exprs_top, .b = value } };
+
+    expr = assignment;
+  }
+
   struct StmtNode* stmt = (struct StmtNode*)malloc(sizeof(struct StmtNode));
   *stmt = (struct StmtNode){ .lineno = line, .type = ExprStmt, .as.expr_stmt.expr = expr };
   return stmt;
