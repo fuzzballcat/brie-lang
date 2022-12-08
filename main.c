@@ -41,8 +41,13 @@ char *read_file(char *fname) {
   }
 }
 
-int main(void) {
-  char *contents = read_file("source.br");
+int main(int argc, char *argv[]) {
+  if(argc != 2){
+    printf("Expected exactly one argument to the command line.\n");
+    exit(1);
+  }
+  
+  char *contents = read_file(argv[1]);
 
   initScanner(contents);
   initChunk(&mainChunk);

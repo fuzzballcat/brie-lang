@@ -1,13 +1,5 @@
-lazy parapptest:
-  my a; b; c; d
-  print a; b; c; d
+defn multiargs:
+  my a; b; c
+  print (rc! -1)
 
-defn eager:
-  my a
-  print a
-
-x = parapptest 1
-x = x 2, 3
-
-x! 4
-eager! 4
+multiargs 1, 2, 3

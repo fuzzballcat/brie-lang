@@ -289,6 +289,13 @@ vm.yieldvals[vm.yieldvals_top - 1];
           } else if(strcmp(fn.as.nativefn.name, "str") == 0) {
             if(call_arity != 1) runtimeError(line, "ArgumentError", "Native function \"str\" expects only one argument but received %d", call_arity);
             push(toStrVal(line, val));
+          } else if(strcmp(fn.as.nativefn.name, "rc") == 0){
+            if(call_arity != 1 || val.type != NUM) runtimeError(line, "ArgumentError", "Native function \"rc\" expects only one argument of type NUM, but received %d argument(s) of type %s", call_arity, typeOf(val));
+
+          if((int)val.as.num.num > vm.stack_base || (int)val.as.num.num < 0){
+            runtimeError(line, "ArgumentError", "Attempt to recall argument %d but no such argument exists!", (int)val.as.num.num);
+          }
+          push(vm.stack[vm.stack_base - (int)val.as.num.num]);
           } else if(strcmp(fn.as.nativefn.name, "return") == 0) {
             if(vm.yieldvals_top == 0){
               runtimeError(line, "ReturnError", "Cannot return outside of a function!");
@@ -333,7 +340,7 @@ vm.yieldvals[vm.yieldvals_top - 1];
             }
 
             break;
-          } else if(strcmp(fn.as.nativefn.name, "yield") == 0){
+          } else if(strcmp(fn.as.nativefn.name, "yields") == 0){
             if(vm.yieldvals_top == 0){
               runtimeError(line, "YieldError", "Cannot yield outside of a function!");
             }

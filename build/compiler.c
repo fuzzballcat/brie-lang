@@ -118,6 +118,11 @@ void exprBytecode(struct ExprNode* node) {
         writeChunk(OP_CONSTANT, node->lineno);
       }
 
+      else if(strcmp(str, "rc") == 0){
+        writeConstant(NATIVEFN_VALUE(str));
+        writeChunk(OP_CONSTANT, node->lineno); 
+      }
+      
       else if(strcmp(str, "str") == 0) {
         writeConstant(NATIVEFN_VALUE(str));
         writeChunk(OP_CONSTANT, node->lineno);
