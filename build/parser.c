@@ -473,6 +473,11 @@ struct StmtNode* parse_block(char is_toplevel) {
         expect(T_SEP, "Expect line separator to unit declaration.");
       }
     }
+    while(parser.current->type == T_SEP) advance();
+    if(parser.current->type == T_DEDENT) {
+      advance();
+      continue;
+    }
     
     stmt->as.stmt_list.stmts[stmt->as.stmt_list.len - 1] = *parse_statement();
 
@@ -496,5 +501,6 @@ struct StmtNode* parse_block(char is_toplevel) {
 struct StmtNode* parse() {
   advance();
   parser.current_unit = NULL;
+  
   return parse_block(1);
 }

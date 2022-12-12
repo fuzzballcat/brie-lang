@@ -124,9 +124,9 @@ int main(int argc, char *argv[]) {
       fstart ++;
     }
     fstart ++;
-    char* module_name = (char*)malloc((fstart - mdnmstart) * sizeof(char));
-    strncpy(module_name, mdnmstart, fstart - mdnmstart - 1);
-    module_name[fstart - mdnmstart - 1] = '\0';
+    char* this_module_name = (char*)malloc((fstart - mdnmstart) * sizeof(char));
+    strncpy(this_module_name, mdnmstart, fstart - mdnmstart - 1);
+    this_module_name[fstart - mdnmstart - 1] = '\0';
     //printf("%s\n", module_name);
     
     while(*fstart == '\n') fstart ++;
@@ -143,20 +143,30 @@ int main(int argc, char *argv[]) {
       strncpy(import_name, import_name_start, fstart - import_name_start);
       import_name[fstart - import_name_start] = '\0';
 
-      import_queue[import_queue_top] = import_name;
-      import_queue_top++;
-      if(import_queue_top >= import_queue_size){
-        import_queue = realloc(import_queue, (import_queue_size *= 2) * sizeof(char*));
+      int do_add = strcmp(import_name, this_module_name);
+      for(int i = 0; i < import_queue_top; i ++){
+        if(!strcmp(import_name, import_queue[i])) {
+          do_add = 0;
+          break;
+        }
+      }
+
+      if(do_add){
+        import_queue[import_queue_top] = import_name;
+        import_queue_top++;
+        if(import_queue_top >= import_queue_size){
+          import_queue = realloc(import_queue, (import_queue_size *= 2) * sizeof(char*));
+        }
       }
       
       while(*fstart == '\n') fstart++;
     }
 
-    char* new_contents = (char*)malloc((6 + strlen(module_name) + strlen(fstart)) * sizeof(char));
+    char* new_contents = (char*)malloc((6 + strlen(this_module_name) + strlen(fstart)) * sizeof(char));
     strcpy(new_contents, "unit ");
-    strcpy(new_contents + 5, module_name);
-    strcpy(new_contents + 5 + strlen(module_name), "\n");
-    strcpy(new_contents + 5 + strlen(module_name) + 1, fstart);
+    strcpy(new_contents + 5, this_module_name);
+    strcpy(new_contents + 5 + strlen(this_module_name), "\n");
+    strcpy(new_contents + 5 + strlen(this_module_name) + 1, fstart);
     
     free(contents);
     
@@ -184,11 +194,20 @@ int main(int argc, char *argv[]) {
         char* import_name = (char*)malloc((file_start - import_name_start + 1) * sizeof(char));
         strncpy(import_name, import_name_start, file_start - import_name_start);
         import_name[file_start - import_name_start] = '\0';
-  
-        import_queue[import_queue_top] = import_name;
-        import_queue_top++;
-        if(import_queue_top >= import_queue_size){
-          import_queue = realloc(import_queue, (import_queue_size *= 2) * sizeof(char*));
+
+        int do_add = strcmp(import_name, this_module_name);
+        for(int i = 0; i < import_queue_top; i ++){
+          if(!strcmp(import_name, import_queue[i])){
+            do_add = 0;
+            break;
+          }
+        }
+        if(do_add){
+          import_queue[import_queue_top] = import_name;
+          import_queue_top++;
+          if(import_queue_top >= import_queue_size){
+            import_queue = realloc(import_queue, (import_queue_size *= 2) * sizeof(char*));
+          }
         }
         
         while(*file_start == '\n') file_start++;
@@ -218,7 +237,7 @@ int main(int argc, char *argv[]) {
     contents = new_contents;
   }
 
-  //printf("c:%s\n", contents);
+  printf("c:%s\n", contents);
 
   // standard workflow
   initScanner(contents);
