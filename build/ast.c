@@ -25,7 +25,7 @@ void printExprNode(struct ExprNode* node) {
       break;
 
     case NumExpr:
-      printf("%.*s", node->as.num_expr.num->length, node->as.num_expr.num->start); 
+      printf("%.*s", (int)node->as.num_expr.num->sobj.len, node->as.num_expr.num->start); 
       break;
     
     case AssignmentExpr:
@@ -105,7 +105,7 @@ void printStmtNode(struct StmtNode* node) {
     case MyArg:
       printf("my ");
       for(int i = 0; i < node->as.my_arg.num; i ++){
-        printf("%.*s", node->as.my_arg.name[i].length, node->as.my_arg.name[i].start);
+        printf("%.*s", (int)node->as.my_arg.name[i].sobj.len, node->as.my_arg.name[i].start);
         if(i+1 < node->as.my_arg.num) printf("; ");
       }
       printf("\n");

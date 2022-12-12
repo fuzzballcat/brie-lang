@@ -29,7 +29,7 @@ int print_opcode(struct Chunk* chunk, int i) {
       return 4;
     case OP_CONSTANT:
       printf("OP_CONSTANT: ");
-      printValue(chunk->pool[PARSE_LONG(i + 1)]);
+      printValue((struct sObj){}, chunk->pool[PARSE_LONG(i + 1)]);
       putchar('\n');
       return 3;
     case OP_ASSIGN:
@@ -91,7 +91,7 @@ int print_opcode(struct Chunk* chunk, int i) {
 void print_bytecode(struct Chunk* chunk) {
   printf("---- pool ----\n");
   for(int i = 0; i < chunk->poollen; i ++) {
-    printValue(chunk->pool[i]);
+    printValue((struct sObj){}, chunk->pool[i]);
     printf("\n");
   }
   printf("---- code ----\n");

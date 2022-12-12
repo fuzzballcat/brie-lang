@@ -1,6 +1,10 @@
 #ifndef value_h
 #define value_h
 
+#include <stddef.h>
+
+#include "error.h"
+
 struct Value {
   enum {
     STRING,
@@ -44,12 +48,12 @@ struct Value {
 };
 
 char* typeOf(struct Value);
-void printValue(struct Value);
+void printValue(struct sObj, struct Value);
 void freeValue(struct Value);
 void copyVal(struct Value*, struct Value*);
 
-struct Value toIntVal(int line, struct Value);
-struct Value toStrVal(int line, struct Value);
+struct Value toIntVal(struct sObj, struct Value);
+struct Value toStrVal(struct sObj, struct Value);
 
 #define STRING_VALUE(x) (struct Value){ .type = STRING, .as.string.str = x }
 #define NATIVEFN_VALUE(nm) (struct Value){ .type = NATIVEFN, .as.nativefn.name = nm }

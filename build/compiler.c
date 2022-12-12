@@ -20,29 +20,29 @@ void initChunk(struct Chunk* chunk){
   chunk->len = 0;
   chunk->capacity = 1;
 
-  chunk->lines = (int*) malloc(1 * sizeof(int));
+  chunk->lines = (struct sObj*) malloc(1 * sizeof(struct sObj));
 
   chunk->pool = (struct Value*) malloc(1 * sizeof(struct Value));
   chunk->poollen = 0;
   chunk->poolcap = 1;
 }
 
-void writeChunk(uint8_t byte, int line) {
+void writeChunk(uint8_t byte, struct sObj sobj) {
   struct Chunk* chunk = currentChunk();
   chunk->code[chunk->len] = byte;
-  chunk->lines[chunk->len] = line;
+  chunk->lines[chunk->len] = sobj;
   chunk->len += 1;
 
   if(chunk->len >= chunk->capacity) {
     chunk->capacity *= 2;
     chunk->code = (uint8_t*) realloc(chunk->code, chunk->capacity * sizeof(uint8_t));
-    chunk->lines = (int*) realloc(chunk->lines, chunk->capacity * sizeof(int));
+    chunk->lines = (struct sObj*) realloc(chunk->lines, chunk->capacity * sizeof(struct sObj));
   }
 }
 
-void writeLong(int byte, int line) {
-  writeChunk(FIRST_BYTE(byte), line);
-  writeChunk(SECOND_BYTE(byte), line);
+void writeLong(int byte, struct sObj sobj) {
+  writeChunk(FIRST_BYTE(byte), sobj);
+  writeChunk(SECOND_BYTE(byte), sobj);
 }
 
 void writeConstant(struct Value value) {
@@ -58,7 +58,7 @@ void writeConstant(struct Value value) {
 void exprBytecode(struct ExprNode* node) {
   switch(node->type) {
     case NoneExpr:
-      writeChunk(OP_NONE, node->lineno);
+      writeChunk(OP_NONE, node->sobj);
       break;
     case FunctionCall:
       for (int seq_times = 0; seq_times < node->as.function_call.num_of_argsets; seq_times ++){
@@ -67,11 +67,11 @@ void exprBytecode(struct ExprNode* node) {
         }
         exprBytecode(node->as.function_call.callee);
         writeConstant(NUM_VALUE(node->as.function_call.arguments[seq_times]->arity));
-        writeChunk(OP_CALL, node->lineno);
+        writeChunk(OP_CALL, node->sobj);
         
-        writeChunk(node->as.function_call.force, node->lineno);
+        writeChunk(node->as.function_call.force, node->sobj);
         
-        writeLong(currentChunk()->poollen - 1, node->lineno);  
+        writeLong(currentChunk()->poollen - 1, node->sobj);  
       }
       break;
     case StringExpr: {
@@ -92,7 +92,7 @@ void exprBytecode(struct ExprNode* node) {
               str[i] = '\r';
               break;
             default:
-              runtimeError(node->lineno, "CompileError", "Invalid string escape character %c!", *ch);
+              general_error(node->sobj, "LexingError", "Valid escape characters are \\n, \\t, and \\r.", "Invalid string escape character %c!", *ch);
               break;
           }
         } else {
@@ -102,8 +102,8 @@ void exprBytecode(struct ExprNode* node) {
       str[i] = '\0';
       str = realloc(str, (i + 1) * sizeof(char));
       writeConstant(STRING_VALUE(str));
-      writeChunk(OP_CONSTANT, node->lineno);
-      writeLong(currentChunk()->poollen - 1, node->lineno);
+      writeChunk(OP_CONSTANT, node->sobj);
+      writeLong(currentChunk()->poollen - 1, node->sobj);
       break;
     }
     case IdentifierExpr: {
@@ -111,66 +111,66 @@ void exprBytecode(struct ExprNode* node) {
 
       if(strcmp(str, "print") == 0) {
         writeConstant(NATIVEFN_VALUE(str));
-        writeChunk(OP_CONSTANT, node->lineno);
+        writeChunk(OP_CONSTANT, node->sobj);
       }
 
       else if(strcmp(str, "rc") == 0){
         writeConstant(NATIVEFN_VALUE(str));
-        writeChunk(OP_CONSTANT, node->lineno); 
+        writeChunk(OP_CONSTANT, node->sobj); 
       }
       
       else if(strcmp(str, "str") == 0) {
         writeConstant(NATIVEFN_VALUE(str));
-        writeChunk(OP_CONSTANT, node->lineno);
+        writeChunk(OP_CONSTANT, node->sobj);
       }
 
       else if(strcmp(str, "int") == 0) {
         writeConstant(NATIVEFN_VALUE(str));
-        writeChunk(OP_CONSTANT, node->lineno);
+        writeChunk(OP_CONSTANT, node->sobj);
       }
 
       else if(strcmp(str, "return") == 0) {
         writeConstant(NATIVEFN_VALUE(str));
-        writeChunk(OP_CONSTANT, node->lineno);
+        writeChunk(OP_CONSTANT, node->sobj);
       }
 
       else if(strcmp(str, "yields") == 0) {
         writeConstant(NATIVEFN_VALUE(str));
-        writeChunk(OP_CONSTANT, node->lineno);
+        writeChunk(OP_CONSTANT, node->sobj);
       }
 
       else if(strcmp(str, "slice") == 0){
        writeConstant(NATIVEFN_VALUE(str));
-        writeChunk(OP_CONSTANT, node->lineno);
+        writeChunk(OP_CONSTANT, node->sobj);
       }
 
       else if(strcmp(str, "len") == 0){
        writeConstant(NATIVEFN_VALUE(str));
-        writeChunk(OP_CONSTANT, node->lineno);
+        writeChunk(OP_CONSTANT, node->sobj);
       }
 
       else if(strcmp(str, "input") == 0) {
         writeConstant(NATIVEFN_VALUE(str));
-        writeChunk(OP_CONSTANT, node->lineno);
+        writeChunk(OP_CONSTANT, node->sobj);
       }
 
       else {
         writeConstant(STRING_VALUE(str));
-        writeChunk(OP_LOAD, node->lineno);
+        writeChunk(OP_LOAD, node->sobj);
       }
 
-      writeLong(currentChunk()->poollen - 1, node->lineno);
+      writeLong(currentChunk()->poollen - 1, node->sobj);
       break;
     }
     case NumExpr: {
-      int len = node->as.num_expr.num->length;
+      int len = node->as.num_expr.num->sobj.len;
       double number = 0;
       for(int digit = 1, i = len - 1; i >= 0; i --, digit *= 10) {
         number += digit * (node->as.num_expr.num->start[i] - '0');
       }
       writeConstant(NUM_VALUE(number));
-      writeChunk(OP_CONSTANT, node->lineno);
-      writeLong(currentChunk()->poollen - 1, node->lineno);
+      writeChunk(OP_CONSTANT, node->sobj);
+      writeLong(currentChunk()->poollen - 1, node->sobj);
       break;
     }
     case AssignmentExpr: {
@@ -180,8 +180,8 @@ void exprBytecode(struct ExprNode* node) {
         char* str = node->as.assignment_expr.a_s[i]->as.id_expr.id;
         
         writeConstant(STRING_VALUE(str));
-        writeChunk(OP_ASSIGN, node->lineno);
-        writeLong(currentChunk()->poollen - 1, node->lineno);
+        writeChunk(OP_ASSIGN, node->sobj);
+        writeLong(currentChunk()->poollen - 1, node->sobj);
       }
       
       break;
@@ -191,33 +191,33 @@ void exprBytecode(struct ExprNode* node) {
       exprBytecode(node->as.binop_expr.left);
       switch(node->as.binop_expr.type) {
         case '+':
-          writeChunk(BINARY_ADD, node->lineno); break;
+          writeChunk(BINARY_ADD, node->sobj); break;
         case '-':
-          writeChunk(BINARY_SUB, node->lineno); break;
+          writeChunk(BINARY_SUB, node->sobj); break;
         case '*':
-          writeChunk(BINARY_MUL, node->lineno); break;
+          writeChunk(BINARY_MUL, node->sobj); break;
         case '/':
-          writeChunk(BINARY_DIV, node->lineno); break;
+          writeChunk(BINARY_DIV, node->sobj); break;
         case '=':
-          writeChunk(BINARY_EQEQ, node->lineno); break;
+          writeChunk(BINARY_EQEQ, node->sobj); break;
         case '!':
-          writeChunk(BINARY_NE, node->lineno); break;
+          writeChunk(BINARY_NE, node->sobj); break;
         case '>':
-          writeChunk(BINARY_GT, node->lineno); break;
+          writeChunk(BINARY_GT, node->sobj); break;
         case 'g':
-          writeChunk(BINARY_GTEQ, node->lineno); break;
+          writeChunk(BINARY_GTEQ, node->sobj); break;
         case '<':
-          writeChunk(BINARY_LT, node->lineno); break;
+          writeChunk(BINARY_LT, node->sobj); break;
         case 'l':
-          writeChunk(BINARY_LTEQ, node->lineno); break;
+          writeChunk(BINARY_LTEQ, node->sobj); break;
         case '&':
-          writeChunk(BINARY_AND, node->lineno); break;
+          writeChunk(BINARY_AND, node->sobj); break;
         case '|':
-          writeChunk(BINARY_OR, node->lineno); break;
+          writeChunk(BINARY_OR, node->sobj); break;
         
 
         default:
-          runtimeError(node->lineno, "InternalError", "Unknown binop %c", node->as.binop_expr.type);
+          internal_error("Unknown binopcode %c", node->as.binop_expr.type);
       }
       break;
     }
@@ -226,14 +226,14 @@ void exprBytecode(struct ExprNode* node) {
       exprBytecode(node->as.unary_expr.expr);
       switch(node->as.unary_expr.type) {
         case '-':
-          writeChunk(UNARY_MINUS, node->lineno);
+          writeChunk(UNARY_MINUS, node->sobj);
           break;
         case '!':
-          writeChunk(UNARY_NOT, node->lineno);
+          writeChunk(UNARY_NOT, node->sobj);
           break;
 
         default:
-          runtimeError(node->lineno, "InternalError", "Unknown unop %c", node->as.unary_expr.type);
+          internal_error("Unknown unop %c", node->as.unary_expr.type);
       }
       break;
   }
@@ -242,9 +242,9 @@ void exprBytecode(struct ExprNode* node) {
 void generateBytecode(struct StmtNode* node) {
   switch(node->type) {
     case ExprStmt:
-      writeChunk(OP_STORESTACKBASE, node->lineno);
+      writeChunk(OP_STORESTACKBASE, node->sobj);
       exprBytecode(node->as.expr_stmt.expr);
-      writeChunk(OP_POPTOSTACKBASE, node->lineno);
+      writeChunk(OP_POPTOSTACKBASE, node->sobj);
       break;
     
     case StmtList:
@@ -255,8 +255,8 @@ void generateBytecode(struct StmtNode* node) {
 
     case IfStmt: {
       exprBytecode(node->as.if_stmt.cond);
-      writeChunk(COND_JUMP, node->lineno);
-      writeLong(0, node->lineno);
+      writeChunk(COND_JUMP, node->sobj);
+      writeLong(0, node->sobj);
       int pos = currentChunk()->len - 1;
       generateBytecode(node->as.if_stmt.stmts);
       int diff = currentChunk()->len - pos;
@@ -267,12 +267,12 @@ void generateBytecode(struct StmtNode* node) {
 
     case IfElseStmt: {
       exprBytecode(node->as.ifelse_stmt.cond);
-      writeChunk(COND_JUMP, node->lineno);
-      writeLong(0, node->lineno);
+      writeChunk(COND_JUMP, node->sobj);
+      writeLong(0, node->sobj);
       int pos = currentChunk()->len - 1;
       generateBytecode(node->as.ifelse_stmt.stmts);
-      writeChunk(JUMP, node->lineno);
-      writeLong(0, node->lineno);
+      writeChunk(JUMP, node->sobj);
+      writeLong(0, node->sobj);
       int diff = currentChunk()->len - pos;
       currentChunk()->code[pos - 1] = FIRST_BYTE(diff);
       currentChunk()->code[pos] = SECOND_BYTE(diff);
@@ -288,12 +288,12 @@ void generateBytecode(struct StmtNode* node) {
     case WhileStmt: {
       int condpos = currentChunk()->len - 1;
       exprBytecode(node->as.if_stmt.cond);
-      writeChunk(COND_JUMP, node->lineno);
-      writeLong(0, node->lineno);
+      writeChunk(COND_JUMP, node->sobj);
+      writeLong(0, node->sobj);
       int pos = currentChunk()->len - 1;
       generateBytecode(node->as.if_stmt.stmts);
-      writeChunk(JUMP_BACK, node->lineno);
-      writeLong(currentChunk()->len - condpos, node->lineno);
+      writeChunk(JUMP_BACK, node->sobj);
+      writeLong(currentChunk()->len - condpos, node->sobj);
       int diff = currentChunk()->len - pos;
       currentChunk()->code[pos - 1] = FIRST_BYTE(diff);
       currentChunk()->code[pos] = SECOND_BYTE(diff);
@@ -301,20 +301,20 @@ void generateBytecode(struct StmtNode* node) {
     }
 
     case FnDecl: {
-      writeChunk(DEF_LBL, node->lineno);
+      writeChunk(DEF_LBL, node->sobj);
       char* str = node->as.fn_decl.name;
       writeConstant(STRING_VALUE(str));
-      writeLong(currentChunk()->poollen - 1, node->lineno);
+      writeLong(currentChunk()->poollen - 1, node->sobj);
 
       // lazy
-      writeChunk((uint8_t)node->as.fn_decl.is_lazy, node->lineno);
+      writeChunk((uint8_t)node->as.fn_decl.is_lazy, node->sobj);
 
-      writeChunk(JUMP, node->lineno);
-      writeLong(0, node->lineno);
+      writeChunk(JUMP, node->sobj);
+      writeLong(0, node->sobj);
       int pos = currentChunk()->len - 1;
 
       generateBytecode(node->as.fn_decl.stmts);
-      writeChunk(OP_RET, node->lineno);
+      writeChunk(OP_RET, node->sobj);
       
       int diff = currentChunk()->len - pos;
       currentChunk()->code[pos - 1] = FIRST_BYTE(diff);
@@ -326,14 +326,14 @@ void generateBytecode(struct StmtNode* node) {
       for(int seminum = 0; seminum < node->as.my_arg.num; seminum ++){
         struct Token id = node->as.my_arg.name[seminum];
   
-        int len = id.length;
+        int len = id.sobj.len;
         char* str = malloc(len + 1);
         memcpy(str, id.start, len);
         str[len] = '\0';
   
         writeConstant(STRING_VALUE(str));
-        writeChunk(OP_MYARG, node->lineno);
-        writeLong(currentChunk()->poollen - 1, node->lineno);
+        writeChunk(OP_MYARG, node->sobj);
+        writeLong(currentChunk()->poollen - 1, node->sobj);
       }
       break;
     }

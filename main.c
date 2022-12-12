@@ -13,6 +13,7 @@
 #include "./build/compiler.h"
 #include "./build/bytecode.h"
 #include "./build/vm.h"
+#include "./build/error.h"
 
 char *read_file(char *fname) {
   FILE *f = fopen(fname, "r");
@@ -106,7 +107,7 @@ char* find_module_file(char* path, char* module_name){
 
 int main(int argc, char *argv[]) {
   if(argc != 2){
-    printf("Expected exactly one argument to the command line.\n");
+    printf("ERROR: Expected exactly one argument to the command line.\n");
     exit(1);
   }
   
@@ -114,31 +115,33 @@ int main(int argc, char *argv[]) {
   
   // module workflow
   if(strncmp(contents, "unit", 4) == 0) {
+    int RESTORE_NEWLINES = 0;
     char* fstart = contents;
     while(*fstart != ' '){
       fstart++;
     }
     fstart++;
     char* mdnmstart = fstart;
-    while(*fstart != '\n'){
-      fstart ++;
-    }
-    fstart ++;
+    while(*fstart != '\n') fstart ++;
+    fstart ++; RESTORE_NEWLINES ++;
     char* this_module_name = (char*)malloc((fstart - mdnmstart) * sizeof(char));
     strncpy(this_module_name, mdnmstart, fstart - mdnmstart - 1);
     this_module_name[fstart - mdnmstart - 1] = '\0';
     //printf("%s\n", module_name);
     
-    while(*fstart == '\n') fstart ++;
-
+    while(*fstart == '\n') { fstart ++; RESTORE_NEWLINES ++; }
+    
     char** import_queue = (char**)malloc(1 * sizeof(char*));
     int import_queue_size = 1, import_queue_top = 0;
+
+    char** where_imported_from_queue = (char**)malloc(1 * sizeof(char*));
+    int where_imported_from_queue_size = 1, where_imported_from_queue_top = 0;
+    
     while(strncmp(fstart, "uses ", 5) == 0){
       fstart += 5;
       char* import_name_start = fstart;
-      while(*fstart != '\n'){
-        fstart ++;
-      }
+      while(*fstart != '\n') fstart ++;
+
       char* import_name = (char*)malloc((fstart - import_name_start + 1) * sizeof(char));
       strncpy(import_name, import_name_start, fstart - import_name_start);
       import_name[fstart - import_name_start] = '\0';
@@ -157,34 +160,44 @@ int main(int argc, char *argv[]) {
         if(import_queue_top >= import_queue_size){
           import_queue = realloc(import_queue, (import_queue_size *= 2) * sizeof(char*));
         }
+
+        where_imported_from_queue[where_imported_from_queue_top] = this_module_name;
+        where_imported_from_queue_top++;
+        if(where_imported_from_queue_top >= where_imported_from_queue_size){
+          where_imported_from_queue = realloc(where_imported_from_queue, (where_imported_from_queue_size *= 2) * sizeof(char*));
+        }
       }
       
-      while(*fstart == '\n') fstart++;
+      while(*fstart == '\n') { fstart++; RESTORE_NEWLINES ++; }
     }
 
     char* new_contents = (char*)malloc((6 + strlen(this_module_name) + strlen(fstart)) * sizeof(char));
     strcpy(new_contents, "unit ");
     strcpy(new_contents + 5, this_module_name);
-    strcpy(new_contents + 5 + strlen(this_module_name), "\n");
-    strcpy(new_contents + 5 + strlen(this_module_name) + 1, fstart);
+    for(int i = 0; i < RESTORE_NEWLINES; i ++){
+      strcpy(new_contents + 5 + strlen(this_module_name) + i, "\n");
+    }
+    strcpy(new_contents + 5 + strlen(this_module_name) + RESTORE_NEWLINES, fstart);
     
     free(contents);
     
     //printf("of:%s\n", new_contents);
 
-    // todo: no repeats
     for(int i = 0; i < import_queue_top; i ++){
+      int SUB_RESTORE_NEWLINES = 0;
       char* file_text = find_module_file(".", import_queue[i]);
       if(file_text == NULL){
-        printf("Can't find module %s\n", import_queue[i]);
-        exit(0);
+        file_only_error(where_imported_from_queue[i], "ModuleError", "Brie can only find modules in folders beneath the current directory.", "Can't find module %s", import_queue[i]);
       }
       //printf("%s\n", file_text);
       
       // we know that file_text starts with unit import_queue[i], so skip to \n
       char* file_start = file_text;
       while(*file_start != '\n') file_start ++;
-      while(*file_start == '\n') file_start ++;
+      while(*file_start == '\n') {
+        file_start ++;
+        SUB_RESTORE_NEWLINES ++;
+      }
       // TODO
       while(strncmp(file_start, "uses ", 5) == 0){
         file_start += 5;
@@ -208,9 +221,15 @@ int main(int argc, char *argv[]) {
           if(import_queue_top >= import_queue_size){
             import_queue = realloc(import_queue, (import_queue_size *= 2) * sizeof(char*));
           }
+
+          where_imported_from_queue[where_imported_from_queue_top] = import_queue[i];
+          where_imported_from_queue_top++;
+          if(where_imported_from_queue_top >= where_imported_from_queue_size){
+            where_imported_from_queue = realloc(where_imported_from_queue, (where_imported_from_queue_size *= 2) * sizeof(char*));
+          }
         }
         
-        while(*file_start == '\n') file_start++;
+        while(*file_start == '\n') { file_start++; SUB_RESTORE_NEWLINES ++; }
       }
 
       //printf("fs:%s\n", file_start);
@@ -218,8 +237,10 @@ int main(int argc, char *argv[]) {
       char* new_file_text = malloc((7 + strlen(import_queue[i]) + strlen(file_start)) * sizeof(char));
       strcpy(new_file_text, "unit ");
       strcpy(new_file_text + 5, import_queue[i]);
-      strcpy(new_file_text + 5 + strlen(import_queue[i]), "\n");
-      strcpy(new_file_text + 5 + strlen(import_queue[i]) + 1, file_start);
+      for(int j = 0; j < SUB_RESTORE_NEWLINES; j++){
+        strcpy(new_file_text + 5 + strlen(import_queue[i]) + j, "\n");
+      }
+      strcpy(new_file_text + 5 + strlen(import_queue[i]) + SUB_RESTORE_NEWLINES, file_start);
       free(file_text);
 
       //printf("nf:%s\n", new_file_text); 
@@ -234,13 +255,18 @@ int main(int argc, char *argv[]) {
       //printf("nc:%s\n", new_contents);
     }
 
+    free(import_queue);
+    free(where_imported_from_queue);
+
     contents = new_contents;
   }
 
-  printf("c:%s\n", contents);
+  //printf("c:%s\n", contents);
 
   // standard workflow
-  initScanner(contents);
+  char* srcnamecpy = (char*)malloc(strlen(argv[1]) * sizeof(char));
+  strcpy(srcnamecpy, argv[1]); // so it can be freed
+  initScanner(contents, srcnamecpy);
   initChunk(&mainChunk);
   generateBytecode(parse());
   cleanupScanner();
@@ -251,6 +277,7 @@ int main(int argc, char *argv[]) {
   vm_loadchunk(&mainChunk);
   execute();
   vm_cleanup(); 
-
+  free(scanner.source);
+  
   return 0;
 }

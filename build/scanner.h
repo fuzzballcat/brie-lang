@@ -1,6 +1,8 @@
 #ifndef scanner_h
 #define scanner_h
 
+#include "error.h"
+
 typedef enum {
   T_SEP,
   T_ID,
@@ -50,18 +52,34 @@ typedef enum {
 struct Token {
   TokenType type;
   char* start;
-  int length;
 
-  int line;
-  int col;
+  struct sObj sobj;
 };
 
 struct Token *scan(void);
-void initScanner(char*);
+void initScanner(char*, char*);
 void cleanupScanner(void);
 
 void dupToken(void);
 
 void printToken(struct Token*);
+
+
+struct Scanner {
+  char* current;
+
+  int line;
+  int display_line;
+  int col;
+
+  int* indentlevel;
+  int indentcap;
+  int indentlen;
+
+  char* current_unit_name;
+  char* source;
+};
+
+struct Scanner scanner;
 
 #endif

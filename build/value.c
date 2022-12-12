@@ -19,8 +19,8 @@ char* typeOf(struct Value val) {
 #undef MAKE_STR
 }
 
-void printValue(struct Value val) {
-  struct Value string = toStrVal(-1, val);
+void printValue(struct sObj sobj, struct Value val) {
+  struct Value string = toStrVal(sobj, val);
 
   printf("%s", string.as.string.str);
 }
@@ -100,7 +100,7 @@ void copyVal(struct Value* dest, struct Value* src) {
   }
 }
 
-struct Value toIntVal(int line, struct Value value) {
+struct Value toIntVal(struct sObj sobj, struct Value value) {
   switch(value.type){
     case NUM:
       return value;
@@ -112,12 +112,12 @@ struct Value toIntVal(int line, struct Value value) {
       if (*str == '-')
         ++str;
 
-      if (!*str) runtimeError(line, "TypeError", "Invalid candidate for integer conversion \"%s\"!", value.as.string.str);
+      if (!*str) general_error(sobj, "TypeError", "The string must be a sequence of digits optionally preceded by a single negative sign.", "Invalid candidate for integer conversion \"%s\"!", value.as.string.str);
 
       while (*str)
       {
         if (!isdigit(*str))
-          runtimeError(line, "TypeError", "Invalid candidate for integer conversion \"%s\"!", value.as.string.str);
+          general_error(sobj, "TypeError", "The string must be a sequence of digits optionally preceded by a single negative sign.", "Invalid candidate for integer conversion \"%s\"!", value.as.string.str);
         else
           ++str;
       }
@@ -127,20 +127,20 @@ struct Value toIntVal(int line, struct Value value) {
     }
 
     case NATIVEFN:
-      runtimeError(line, "TypeError", "Invalid candidate for integer conversion <native fn %s>!", value.as.nativefn.name);
+      general_error(sobj, "TypeError", "A function cannot be converted to an integer.", "Invalid candidate for integer conversion <native fn %s>!", value.as.nativefn.name);
 
     case FUN:
-      runtimeError(line, "TypeError", "Invalid candidate for integer conversion <fn %s>!", value.as.fun.name);
+      general_error(sobj, "TypeError", "A function cannot be converted to an integer.", "Invalid candidate for integer conversion <fn %s>!", value.as.fun.name);
 
     case PARAPP:
-      runtimeError(line, "TypeError", "Invalid candidate for integer conversion <partial fn %s>!", value.as.parapp.fn.name);
+      general_error(sobj, "TypeError", "A function cannot be converted to an integer.", "Invalid candidate for integer conversion <partial fn %s>!", value.as.parapp.fn.name);
     
     case NONE:
-      runtimeError(line, "TypeError", "Invalid candidate for integer conversion None!");
+      general_error(sobj, "TypeError", "None cannot be converted to an integer (perhaps add a None check).", "Invalid candidate for integer conversion None!");
   }
 }
 
-struct Value toStrVal(int line, struct Value value){
+struct Value toStrVal(struct sObj sobj, struct Value value){
   switch(value.type) {
     case STRING:
       return value;

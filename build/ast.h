@@ -2,6 +2,7 @@
 #define ast_h
 
 #include "scanner.h"
+#include "error.h"
 
 struct ArgumentObject {
   struct ExprNode** arguments;
@@ -9,7 +10,7 @@ struct ArgumentObject {
 };
 
 struct ExprNode {
-  int lineno;
+  struct sObj sobj;
 
   enum {
     FunctionCall,
@@ -62,7 +63,7 @@ struct ExprNode {
 };
 
 struct StmtNode {
-  int lineno;
+  struct sObj sobj;
 
   enum {
     ExprStmt,

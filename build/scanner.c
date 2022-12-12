@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <string.h>
 
+#include "error.h"
 #include "scanner.h"
 
 int hasInitIndent = 0;
@@ -11,25 +12,13 @@ int emitDedents = 0;
 int emitFakeNewline = 0;
 int dupTimes = 0;
 int EMIT_LAZY_BANG = 0;
-
-struct Scanner {
-  char* current;
-
-  int line;
-  int col;
-
-  int* indentlevel;
-  int indentcap;
-  int indentlen;
-};
+int EXPECT_UNITNAME_NEXT = 0;
 
 struct Token lastTok;
 
-struct Scanner scanner;
-
-struct Token* tok(TokenType type, char* start, int len, int line, int col) {
+struct Token* tok(TokenType type, char* start, int len, int line, int display_line, int col, char* source_name) {
   struct Token* tok = (struct Token*)malloc(sizeof(struct Token));
-  *tok = (struct Token){ .type = type, .start = start, .length = len, .line = line, .col = col };
+  *tok = (struct Token){ .type = type, .start = start, .sobj = { .len = len, .line = line, .display_line = display_line, .col = col, .source_name = source_name } };
   lastTok = *tok;
   return tok;
 }
@@ -68,6 +57,7 @@ void skip_ws() {
           next();
           scanner.col = 1;
           scanner.line ++;
+          scanner.display_line ++;
         }
         break;
       }
@@ -82,24 +72,24 @@ struct Token* scan(void) {
   if(EMIT_LAZY_BANG){
     EMIT_LAZY_BANG = 0;
     next();
-    return tok(T_LAZY_BANG, scanner.current, 1, scanner.line, scanner.col);
+    return tok(T_LAZY_BANG, scanner.current, 1, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
   }
   
   if(!hasInitIndent) {
     hasInitIndent = 1;
-    return tok(T_INDENT, scanner.current, 1, scanner.line, scanner.col);
+    return tok(T_INDENT, scanner.current, 1, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
   }
 
   if(emitFakeNewline) {
     emitFakeNewline --;
-    return tok(T_SEP, scanner.current, 1, scanner.line, scanner.col);
+    return tok(T_SEP, scanner.current, 1, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
   }
 
   if(emitDedents) {
     emitDedents --;
     if(!emitDedents) emitFakeNewline ++;
 
-    return tok(T_DEDENT, scanner.current, 1, scanner.line, scanner.col);
+    return tok(T_DEDENT, scanner.current, 1, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
   }
 
   if(dupTimes) {
@@ -122,28 +112,37 @@ struct Token* scan(void) {
       len ++;
     }
     if(len == 2 && strncmp(current, "if", 2) == 0) {
-      return tok(T_IF, current, len, scanner.line, scanner.col - len);
+      return tok(T_IF, current, len, scanner.line, scanner.display_line, scanner.col - len, scanner.current_unit_name);
     } else if(len == 2 && strncmp(current, "or", 2) == 0) {
-      return tok(T_ELSE, current, len, scanner.line, scanner.col - len);
+      return tok(T_ELSE, current, len, scanner.line, scanner.display_line, scanner.col - len, scanner.current_unit_name);
     } else if(len == 2 && strncmp(current, "do", 2) == 0) {
-      return tok(T_WHILE, current, len, scanner.line, scanner.col - len);
+      return tok(T_WHILE, current, len, scanner.line, scanner.display_line, scanner.col - len, scanner.current_unit_name);
     } else if(len == 2 && strncmp(current, "my", 2) == 0) {
-      return tok(T_MY, current, len, scanner.line, scanner.col - len);
+      return tok(T_MY, current, len, scanner.line, scanner.display_line, scanner.col - len, scanner.current_unit_name);
     } else if(len == 4 && strncmp(current, "None", 4) == 0) {
-      return tok(T_NONE, current, len, scanner.line, scanner.col - len);
+      return tok(T_NONE, current, len, scanner.line, scanner.display_line, scanner.col - len, scanner.current_unit_name);
     } else if(len == 4 && strncmp(current, "defn", 4) == 0) {
-      return tok(T_DEF, current, len, scanner.line, scanner.col - len);
+      return tok(T_DEF, current, len, scanner.line, scanner.display_line, scanner.col - len, scanner.current_unit_name);
     } else if(len == 4 && strncmp(current, "lazy", 4) == 0) {
-      return tok(T_LAZY, current, len, scanner.line, scanner.col - len);
+      return tok(T_LAZY, current, len, scanner.line, scanner.display_line, scanner.col - len, scanner.current_unit_name);
     } else if(len == 4 && strncmp(current, "unit", 4) == 0){
-      return tok(T_UNIT, current, len, scanner.line, scanner.col - len);
+      scanner.display_line = 1;
+      EXPECT_UNITNAME_NEXT = 1;
+      return tok(T_UNIT, current, len, scanner.line, scanner.display_line, scanner.col - len, scanner.current_unit_name);
     }
 
     // context-sensitive lexing
     if(*scanner.current == '!'){
       EMIT_LAZY_BANG = 1;
     }
-    return tok(T_ID, current, len, scanner.line, scanner.col - len);
+    if(EXPECT_UNITNAME_NEXT){
+      EXPECT_UNITNAME_NEXT = 0;
+      free(scanner.current_unit_name);
+      scanner.current_unit_name = (char*)malloc((len + 1) * sizeof(char));
+      strncpy(scanner.current_unit_name, current, len);
+      scanner.current_unit_name[len] = '\0';
+    }
+    return tok(T_ID, current, len, scanner.line, scanner.display_line, scanner.col - len, scanner.current_unit_name);
   }
 
   if (isdigit(c)) {
@@ -154,18 +153,19 @@ struct Token* scan(void) {
       c = peek();
       len ++;
     }
-    return tok(T_NUM, current, len, scanner.line, scanner.col - len);
+    return tok(T_NUM, current, len, scanner.line, scanner.display_line, scanner.col - len, scanner.current_unit_name);
   }
 
-#define onechartok(x) struct Token* token = tok(x, scanner.current, 1, scanner.line, scanner.col); next(); return token
+#define onechartok(x) struct Token* token = tok(x, scanner.current, 1, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name); next(); return token
 
   switch (c) {
     case '\n': {
-      struct Token* token = tok(T_SEP, scanner.current, 1, scanner.line, scanner.col);
+      struct Token* token = tok(T_SEP, scanner.current, 1, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
 
       while(peek() == '\n') {
         next();
         scanner.line ++;
+        scanner.display_line ++;
         scanner.col = 1;
       }
 
@@ -178,7 +178,7 @@ struct Token* scan(void) {
           scanner.indentcap *= 2;
           scanner.indentlevel = (int*)realloc(scanner.indentlevel, scanner.indentcap * sizeof(int));
         }
-        return tok(T_INDENT, scanner.current - 1, 1, scanner.line, scanner.col);
+        return tok(T_INDENT, scanner.current - 1, 1, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
       } else if (scanner.indentlevel[scanner.indentlen - 1] > scanner.col - 1) {
         do {
           scanner.indentlen --;
@@ -186,13 +186,12 @@ struct Token* scan(void) {
         } while (scanner.indentlevel[scanner.indentlen - 1] > scanner.col - 1);
 
         if(scanner.indentlevel[scanner.indentlen - 1] != scanner.col - 1) {
-          printf("\x1b[33m[line %d] \x1b[31mError:\x1b[0m Unexpected unindent!\n", scanner.line);
-          exit(1);
+          internal_error("LexingError: Unexpected unindent!");
         }
 
         emitDedents --;
         if(!emitDedents) emitFakeNewline ++;
-        return tok(T_DEDENT, scanner.current - 1, 1, scanner.line, scanner.col);
+        return tok(T_DEDENT, scanner.current - 1, 1, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
       }
 
       return token;
@@ -208,7 +207,7 @@ struct Token* scan(void) {
 
     case '(': {
       if(peektwo() == ')') {
-        struct Token* token = tok(T_NONE, scanner.current, 2, scanner.line, scanner.col);
+        struct Token* token = tok(T_NONE, scanner.current, 2, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
         next(); next();
         return token;
       }
@@ -229,7 +228,7 @@ struct Token* scan(void) {
 
     case '=': {
       if(peektwo() == '=') {
-        struct Token* token = tok(T_EQEQ, scanner.current, 2, scanner.line, scanner.col);
+        struct Token* token = tok(T_EQEQ, scanner.current, 2, scanner.line, scanner.display_line, scanner.col,  scanner.current_unit_name);
         next(); next();
         return token;
       }
@@ -237,7 +236,7 @@ struct Token* scan(void) {
     }
     case '!': {
       if(peektwo() == '=') {
-        struct Token* token = tok(T_NE, scanner.current, 2, scanner.line, scanner.col);
+        struct Token* token = tok(T_NE, scanner.current, 2, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
         next(); next();
         return token;
       }
@@ -245,7 +244,7 @@ struct Token* scan(void) {
     }
     case '>': {
       if(peektwo() == '=') {
-        struct Token* token = tok(T_GTEQ, scanner.current, 2, scanner.line, scanner.col);
+        struct Token* token = tok(T_GTEQ, scanner.current, 2, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
         next(); next();
         return token;
       }
@@ -253,7 +252,7 @@ struct Token* scan(void) {
     }
     case '<': {
       if(peektwo() == '=') {
-        struct Token* token = tok(T_LTEQ, scanner.current, 2, scanner.line, scanner.col);
+        struct Token* token = tok(T_LTEQ, scanner.current, 2, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
         next(); next();
         return token;
       }
@@ -288,6 +287,7 @@ struct Token* scan(void) {
           if(peek() == '\n') {
             scanner.col = 1;
             scanner.line ++;
+            scanner.display_line ++;
           }
           len ++;
         }
@@ -296,29 +296,30 @@ struct Token* scan(void) {
         len ++;
       }
       next(); // closing quote
-      return tok(T_STR, current, len, scanner.line, scanner.col - len - 2);
+      return tok(T_STR, current, len, scanner.line, scanner.display_line, scanner.col - len - 2, scanner.current_unit_name);
     }
 
     case '\0':
     case EOF:
       if(!hasFinalDedent) {
         hasFinalDedent = 1;
-        return tok(T_DEDENT, scanner.current, 1, scanner.line, scanner.col);
+        return tok(T_DEDENT, scanner.current, 1, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
       }
-      return tok(T_EOF, scanner.current, 1, scanner.line, scanner.col);
+      return tok(T_EOF, scanner.current, 1, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
 
     default:
-      printf("\x1b[33m[line %d, column %d]\x1b[31m LexingError:\x1b[0m Unknown token \"%c\"\n", scanner.line, scanner.col, c);
-      exit(1);
+      general_error((struct sObj){ .line = scanner.line, .display_line = scanner.display_line, .col = scanner.col, .len = 1, .source_name = scanner.current_unit_name}, "LexingError", "This is a typo", "Unknown token \"%c\"", c);
   }
 
 #undef onechartok
 
 }
 
-void initScanner(char* source) {
+void initScanner(char* source, char* sourcename) {
+  scanner.source = source;
   scanner.current = source;
   scanner.line = 1;
+  scanner.display_line = 1;
   scanner.col = 1;
 
   scanner.indentlevel = malloc(5 * sizeof(int));
@@ -326,6 +327,8 @@ void initScanner(char* source) {
 
   scanner.indentcap = 5;
   scanner.indentlen = 1;
+
+  scanner.current_unit_name = sourcename;
 }
 
 void cleanupScanner() {
@@ -416,7 +419,7 @@ void printTokType(TokenType typ) {
 }
 
 void printToken(struct Token* tok) {
-  printf("TOK{ \"%.*s\", type= ", tok->length, tok->start);
+  printf("TOK{ \"%.*s\", type= ", (int)tok->sobj.len, tok->start);
   printTokType(tok->type);
-  printf(", line= %d, col= %d }\n", tok->line, tok->col);
+  printf(", line= %zu, col= %zu }\n", tok->sobj.line, tok->sobj.col);
 }

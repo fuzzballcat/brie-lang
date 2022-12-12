@@ -48,14 +48,14 @@ void push(struct Value x) {
     vm.stack_size *= 2;
     vm.stack = (struct Value*) realloc(vm.stack, vm.stack_size * sizeof(struct Value));
     if(vm.stack == NULL) {
-      runtimeError(-1, "StackError", "Unable to allocate memory for value stack!");
+      internal_error("StackError: Unable to allocate memory for value stack!");
     }
   }
 }
 
 struct Value pop() {
   vm.stack_top --;
-  if(vm.stack_top < 0) runtimeError(-1, "InternalError", "Stack fault!");
+  if(vm.stack_top < 0) internal_error("InternalError: Stack fault!");
   return vm.stack[vm.stack_top];
 }
 
@@ -85,7 +85,7 @@ void execute() {
   
   for(int i = 0; i < vm.chunk->len; i ++) {
     enum OpType opcode = (enum OpType) vm.chunk->code[i];
-    int line = vm.chunk->lines[i];
+    struct sObj line = vm.chunk->lines[i];
 
 #ifdef TRACE
     for(int k = 0; k < vm.stack_top; k ++) {
@@ -122,7 +122,7 @@ void execute() {
         vm.stack_top = vm.stackbasestack[vm.stackbasestack_top - 1];
         vm.stackbasestack_top --;
         if(vm.stackbasestack_top < 0) {
-          runtimeError(-1, "StackError", "Stackbasestack has reached negative size!");
+          internal_error("StackError: Stackbasestack has reached negative size!");
         }
         break;
 
@@ -132,7 +132,7 @@ void execute() {
         //if(vm.arg_num >= vm.callstack[vm.callstack_top - 1]) {
         // yield update... this feels unsafe, but it works?
         if(vm.arg_num > vm.stack_base){
-          runtimeError(line, "ArgumentError", "Attempt to grab argument with name \"%s\", but no such argument is left!", vm.chunk->pool[PARSE_LONG(i - 1)].as.string.str);
+          general_error(line, "ArgumentError", "Ensure that the number of calls to `my` is properly bounded.", "Attempt to grab argument with name \"%s\", but no such argument is left!", vm.chunk->pool[PARSE_LONG(i - 1)].as.string.str);
         }
         vm.arg_num ++;
         break;
@@ -256,11 +256,11 @@ vm.yieldvals[vm.yieldvals_top - 1];
           }
 
           if (vm.callstack_top >= MAX_CALL_STACK) {
-            runtimeError(line, "StackError", "Max recursion depth reached!");
+            general_error(line, "StackError", "For deeply recursed algorithms, try converting to an iterative algorithm instead.", "Max recursion depth reached!");
           }
 
           if(vm.callstack == NULL) {
-            runtimeError(-1, "StackError", "Unable to allocate memory for call stack!");
+            internal_error("StackError: Unable to allocate memory for call stack!");
           }
 
           if(vm.yieldvals_top >= vm.yieldvals_size){
@@ -279,26 +279,26 @@ vm.yieldvals[vm.yieldvals_top - 1];
           i = fn.as.fun.label + 4;
         } else if(fn.type == NATIVEFN) {
           if(strcmp(fn.as.nativefn.name, "print") == 0) {
-            if(call_arity != 1) runtimeError(line, "ArgumentError", "Native function \"print\" expects only one argument but received %d", call_arity);
-            printValue(val);
+            if(call_arity != 1) general_error(line, "ArgumentError", "If you wish to print multiple values, utilize the semicolon sequenced call operator.", "Native function \"print\" expects only one argument but received %d", call_arity);
+            printValue(line, val);
             putchar('\n');
             push(NONE_VALUE());
           } else if(strcmp(fn.as.nativefn.name, "int") == 0) {
-            if(call_arity != 1) runtimeError(line, "ArgumentError", "Native function \"int\" expects only one argument but received %d", call_arity);
+            if(call_arity != 1) general_error(line, "ArgumentError", "Ensure that the expression is properly parenthesized.", "Native function \"int\" expects only one argument but received %d", call_arity);
             push(toIntVal(line, val));
           } else if(strcmp(fn.as.nativefn.name, "str") == 0) {
-            if(call_arity != 1) runtimeError(line, "ArgumentError", "Native function \"str\" expects only one argument but received %d", call_arity);
+            if(call_arity != 1) general_error(line, "ArgumentError", "Ensure that the expression is properly parenthesized.", "Native function \"str\" expects only one argument but received %d", call_arity);
             push(toStrVal(line, val));
           } else if(strcmp(fn.as.nativefn.name, "rc") == 0){
-            if(call_arity != 1 || val.type != NUM) runtimeError(line, "ArgumentError", "Native function \"rc\" expects only one argument of type NUM, but received %d argument(s) of type %s", call_arity, typeOf(val));
+            if(call_arity != 1 || val.type != NUM) general_error(line, "ArgumentError", "\"rc\" recalls a single argument given an index.  Consider using the semicolon sequenced call operator to recall multiple arguments simulatenously.", "Native function \"rc\" expects only one argument of type NUM, but received %d argument(s) of type %s", call_arity, typeOf(val));
 
           if((int)val.as.num.num > vm.stack_base || (int)val.as.num.num < 0){
-            runtimeError(line, "ArgumentError", "Attempt to recall argument %d but no such argument exists!", (int)val.as.num.num);
+            general_error(line, "ArgumentError", "Ensure that calls to \"rc\" do not exceed the bounds of arguments already grabbed using \"my\".", "Attempt to recall argument %d but no such argument exists!", (int)val.as.num.num);
           }
           push(vm.stack[vm.stack_base - (int)val.as.num.num]);
           } else if(strcmp(fn.as.nativefn.name, "return") == 0) {
             if(vm.yieldvals_top == 0){
-              runtimeError(line, "ReturnError", "Cannot return outside of a function!");
+              general_error(line, "ReturnError", "The keyword \"return\" is invalid outside of a function.", "Cannot return outside of a function!");
             }
             int old_arg_num = vm.arg_num;
             vm.callstack_top -= 2; // call_arity
@@ -329,20 +329,19 @@ vm.yieldvals[vm.yieldvals_top - 1];
             free(vm.yieldvals[vm.yieldvals_top - 1].vals);
             vm.yieldvals_top --;
             if(vm.yieldvals_top < 0){
-              printf("oh no oh no yield stack borkey\n"); 
-              exit(1);
+              internal_error("StackError: Yield stack has reached negative size!");
             }
 
             // undo the "push stack base" that came before, return is technically an expression
             vm.stackbasestack_top --;
             if(vm.stackbasestack_top < 0) {
-              runtimeError(-1, "StackError", "Stackbasestack has reached negative size!");
+              internal_error("StackError: Stackbasestack has reached negative size!");
             }
 
             break;
           } else if(strcmp(fn.as.nativefn.name, "yields") == 0){
             if(vm.yieldvals_top == 0){
-              runtimeError(line, "YieldError", "Cannot yield outside of a function!");
+              general_error(line, "YieldError", "The keyword \"yield\" is only valid inside of a function.", "Cannot yield outside of a function!");
             }
             vm.yieldvals[vm.yieldvals_top - 1].vals[vm.yieldvals[vm.yieldvals_top - 1].top] = val;
             vm.yieldvals[vm.yieldvals_top - 1].top ++;
@@ -355,22 +354,22 @@ vm.yieldvals[vm.yieldvals_top - 1];
           } else if(strcmp(fn.as.nativefn.name, "input") == 0) {
             switch(val.type) {
               case NONE: break;
-              case STRING: printValue(val); break;
+              case STRING: printValue(line, val); break;
 
               default:
-                runtimeError(line, "TypeError", "Expect argument of type str or None to function \"input\", received argument of type %s!", typeOf(val));
+                general_error(line, "TypeError", "\"input\" takes a string as a prompt or None without a prompt.", "Expect argument of type str or None to function \"input\", received argument of type %s!", typeOf(val));
             }
             push(STRING_VALUE(inputString(stdin, 10)));
           } else if(strcmp(fn.as.nativefn.name, "slice") == 0){
             if(call_arity != 3){
-              runtimeError(line, "ArgumentError", "Native function \"slice\" requires three arguments but recieved %d", call_arity);
+              general_error(line, "ArgumentError", "\"slice\" expects a string and two numeric indices to slice into.", "Native function \"slice\" requires three arguments but recieved %d", call_arity);
             }
             if(val.type != STRING){
-              runtimeError(line, "TypeError", "Expect first argument to native function \"slice\" to be STRING, received argument of type %s!", typeOf(val));
+              general_error(line, "TypeError", "\"slice\" expects a string and two numeric indices to slice into.", "Expect first argument to native function \"slice\" to be STRING, received argument of type %s!", typeOf(val));
             }
             struct Value i0 = pop(), i1 = pop();
             if(i0.type != NUM || i1.type != NUM){
-              runtimeError(line, "TypeError", "Indices to native function \"slice\" must be integers, received argument of type %s!", typeOf(val));
+              general_error(line, "TypeError", "\"slice\" expects a string and two numeric indices to slice into.", "Indices to native function \"slice\" must be integers, received argument of type %s!", typeOf(val));
             }
             size_t start = (size_t) i0.as.num.num,
                     end  = (size_t) i1.as.num.num,
@@ -383,15 +382,15 @@ vm.yieldvals[vm.yieldvals_top - 1];
             push(val);
           } else if(strcmp(fn.as.nativefn.name, "len") == 0){
             if(call_arity != 1 || val.type != STRING){
-              runtimeError(line, "ArgumentError", "Native fucntion \"len\" expects one argument of type STRING, recieved %d argument(s) of type %s!", call_arity, typeOf(val));
+              general_error(line, "ArgumentError", "\"len\" expects a single string.", "Native function \"len\" expects one argument of type STRING, recieved %d argument(s) of type %s!", call_arity, typeOf(val));
             }
 
             push((struct Value){ .type = NUM, .as.num.num = strlen(val.as.string.str) });
           } else {
-            runtimeError(line, "InternalError", "Unknown native function \"%s\"", fn.as.nativefn.name);
+            internal_error("Unknown native function \"%s\"", fn.as.nativefn.name);
           }
         } else {
-          runtimeError(line, "TypeError", "Attempting to call non-callable!");
+          general_error(line, "TypeError", "Only objects of type function may be called.", "Attempting to call non-callable!");
         }
 
         break;
@@ -417,7 +416,7 @@ vm.yieldvals[vm.yieldvals_top - 1];
       case OP_LOAD: {
         char* str = vm.chunk->pool[PARSE_LONG(i + 1)].as.string.str;
         struct hash_list_node* lookup = hash_lookup(varmap, str);
-        if(lookup == NULL) runtimeError(line, "NameError", "Name '%s' is not defined", str);
+        if(lookup == NULL) general_error(line, "NameError", "Check for typos.", "Name '%s' is not defined", str);
         struct Value val;
         copyVal(&val, &lookup->value);
         push(val);
@@ -427,7 +426,7 @@ vm.yieldvals[vm.yieldvals_top - 1];
 
       case UNARY_MINUS: {
         struct Value val = pop();
-        if(val.type != NUM) runtimeError(line, "TypeError", "Unary - is not defined for values of type %s!", typeOf(val));
+        if(val.type != NUM) general_error(line, "TypeError", "Unary - may only be used on numeric objects.", "Unary - is not defined for values of type %s!", typeOf(val));
         val.as.num.num = -val.as.num.num;
         push(val);
         break;
@@ -462,8 +461,8 @@ vm.yieldvals[vm.yieldvals_top - 1];
         struct Value right = pop();
         switch(left.type) {
           case STRING: {
-            if(right.type != STRING) runtimeError(line, "TypeError", "Cannot apply operator %s to values of type %s and %s!", binopToStr(opcode), typeOf(left), typeOf(right));
-            if(opcode != BINARY_ADD && opcode != BINARY_EQEQ && opcode != BINARY_NE) runtimeError(line, "TypeError", "Operator %s is not defined values of type string and string!", binopToStr(opcode));
+            if(right.type != STRING) general_error(line, "TypeError", "A string may only be operated with another string.", "Cannot apply operator %s to values of type %s and %s!", binopToStr(opcode), typeOf(left), typeOf(right));
+            if(opcode != BINARY_ADD && opcode != BINARY_EQEQ && opcode != BINARY_NE) general_error(line, "TypeError", "Strings may only be added and tested for [in]equality.", "Operator %s is not defined values of type string and string!", binopToStr(opcode));
 
             if(opcode == BINARY_ADD) {
               int leftlen = strlen(left.as.string.str);
@@ -487,7 +486,7 @@ vm.yieldvals[vm.yieldvals_top - 1];
             break;
           }
           case NUM:
-            if(right.type != NUM) runtimeError(line, "TypeError", "Cannot apply binary op %s to values of type %s and %s!", binopToStr(opcode), typeOf(left), typeOf(right));
+            if(right.type != NUM) general_error(line, "TypeError", "Numbers may only be operated with other numbers.", "Cannot apply binary op %s to values of type %s and %s!", binopToStr(opcode), typeOf(left), typeOf(right));
             double value = left.as.num.num;
             switch(opcode) {
               case BINARY_ADD:
@@ -527,14 +526,14 @@ vm.yieldvals[vm.yieldvals_top - 1];
                 value = value || right.as.num.num;
                 break;
 
-              default: runtimeError(line, "InternalError", "UnknownBinaryOp");
+              default: internal_error("InternalError: UnknownBinaryOp");
             }
 
             push(NUM_VALUE(value));
             break;
 
           default:
-            runtimeError(line, "TypeError", "Cannot apply binary op %s to values of type %s and %s!", binopToStr(opcode), typeOf(left), typeOf(right));
+            general_error(line, "TypeError", "Binary operators may be used on strings and numbers.", "Cannot apply binary op %s to values of type %s and %s!", binopToStr(opcode), typeOf(left), typeOf(right));
         }
 
         break;

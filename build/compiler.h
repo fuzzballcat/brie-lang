@@ -5,13 +5,14 @@
 
 #include "ast.h"
 #include "value.h"
+#include "error.h"
 
 struct Chunk {
   uint8_t* code;
   int len;
   int capacity;
 
-  int* lines;
+  struct sObj* lines; // feels wastey
 
   struct Value* pool;
   int poollen;

@@ -1,0 +1,6 @@
+unit Main
+
+uses A
+uses B
+
+x = y
