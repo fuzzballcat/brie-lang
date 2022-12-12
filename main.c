@@ -171,7 +171,8 @@ int main(int argc, char *argv[]) {
       while(*fstart == '\n') { fstart++; RESTORE_NEWLINES ++; }
     }
 
-    char* new_contents = (char*)malloc((6 + strlen(this_module_name) + strlen(fstart)) * sizeof(char));
+    char* new_contents = (char*)malloc((6 + RESTORE_NEWLINES + 
+strlen(this_module_name) + strlen(fstart)) * sizeof(char));
     strcpy(new_contents, "unit ");
     strcpy(new_contents + 5, this_module_name);
     for(int i = 0; i < RESTORE_NEWLINES; i ++){
@@ -234,7 +235,7 @@ int main(int argc, char *argv[]) {
 
       //printf("fs:%s\n", file_start);
 
-      char* new_file_text = malloc((7 + strlen(import_queue[i]) + strlen(file_start)) * sizeof(char));
+      char* new_file_text = malloc((6 + RESTORE_NEWLINES + strlen(import_queue[i]) + strlen(file_start)) * sizeof(char));
       strcpy(new_file_text, "unit ");
       strcpy(new_file_text + 5, import_queue[i]);
       for(int j = 0; j < SUB_RESTORE_NEWLINES; j++){

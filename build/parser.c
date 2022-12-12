@@ -40,7 +40,7 @@ char* id_format(char* idname){
   
   char* end = strtok(idcpy, ".");
   if(end == NULL){
-    general_error(parser.current->sobj, "LexingError", "A name may not be composed exclusively of the character '.'.  Consider evaluating your ability to function sanely.", "Invalid name \"%s\"", idname);
+    general_error(parser.previous->sobj, "LexingError", "A name may not be composed exclusively of the character '.'.  Consider evaluating your ability to function sanely.", "Invalid name \"%s\"", idname);
   }
 
   end = strtok(NULL, ".");
@@ -109,7 +109,7 @@ struct ExprNode* parse_atom() {
     }
     case T_LPAR: {
       struct ExprNode* expr = parse_expression();
-      expect(T_RPAR, "ParsingError", "There is a mismatched parenthesis.", "Expected right parenthesis to end expression!");
+      expect(T_RPAR, "ParsingError", "There shouldn't be any further expression here.  Check for missing commas or semicolons.", "Expected right parenthesis to end expression!");
       return expr;
     }
 
@@ -441,7 +441,6 @@ struct StmtNode* parse_block(char is_toplevel) {
   *stmt = (struct StmtNode){ .sobj = parser.current->sobj, .type = StmtList, .as.stmt_list = { .len = 1, .stmts = (struct StmtNode*)malloc(1 * sizeof(struct StmtNode))}};
 
   expect(T_INDENT, "ParsingError", "A statement block must begin with an indent.", "Expect indent to begin block!");
-
   do {
     if (parser.current->type == T_UNIT){
       if(!is_toplevel){
@@ -489,6 +488,6 @@ struct StmtNode* parse_block(char is_toplevel) {
 struct StmtNode* parse() {
   advance();
   parser.current_unit = NULL;
-  
+
   return parse_block(1);
 }
