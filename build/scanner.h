@@ -36,6 +36,8 @@ typedef enum {
   T_MY,
   T_NONE,
 
+  T_UNIT,
+
   T_STR,
   T_NUM,
 

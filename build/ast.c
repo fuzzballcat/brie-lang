@@ -21,7 +21,7 @@ void printExprNode(struct ExprNode* node) {
       break;
 
     case StringExpr:
-      printf("\"%.*s\"", node->as.string_expr.str->length, node->as.string_expr.str->start);
+      printf("\"%s\"", node->as.string_expr.str);
       break;
 
     case NumExpr:
@@ -38,7 +38,7 @@ void printExprNode(struct ExprNode* node) {
       break;
     
     case IdentifierExpr:
-      printf("%.*s", node->as.id_expr.id->length, node->as.id_expr.id->start);
+      printf("%s", node->as.id_expr.id);
       break;
 
     case BinopExpr:
@@ -96,7 +96,7 @@ void printStmtNode(struct StmtNode* node) {
     case FnDecl:
       if(node->as.fn_decl.is_lazy) printf("lazy ");
       else printf("def ");
-      printf("%.*s", node->as.fn_decl.name.length, node->as.fn_decl.name.start);
+      printf("%s", node->as.fn_decl.name);
       printf(": {\n");
       printStmtNode(node->as.fn_decl.stmts);
       printf("}\n");

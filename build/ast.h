@@ -31,11 +31,11 @@ struct ExprNode {
     } function_call;
 
     struct {
-      struct Token* str;
+      char* str;
     } string_expr;
 
     struct {
-      struct Token* id;
+      char* id;
     } id_expr;
 
     struct {
@@ -101,7 +101,7 @@ struct StmtNode {
     } while_stmt;
 
     struct {
-      struct Token name;
+      char* name;
       struct StmtNode* stmts;
       int is_lazy;
     } fn_decl;

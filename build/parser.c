@@ -1,14 +1,17 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "parser.h"
 #include "scanner.h"
 
-struct StmtNode* parse_block();
+struct StmtNode* parse_block(char is_toplevel);
 
 struct {
   struct Token* current;
   struct Token* previous;
+
+  char* current_unit;
 } parser;
 
 static void error(struct Token*, char*) __attribute__((noreturn));
@@ -38,6 +41,46 @@ void expect(TokenType t, char* msg) {
   }
 }
 
+char* id_format(char* idname){
+  if(parser.current_unit == NULL || 
+        !(strcmp(idname, "print") && strcmp(idname, "rc") && strcmp(idname, "int") && strcmp(idname, "str") && strcmp(idname, "return") && strcmp(idname, "yields") && strcmp(idname, "return") && strcmp(idname, "slice") && strcmp(idname, "len") && strcmp(idname, "input"))
+        ){
+    return idname;
+  }
+  char* idcpy = (char*)malloc((strlen(idname)+1) * sizeof(char));
+  strcpy(idcpy, idname);
+  
+  char* end = strtok(idcpy, ".");
+  if(end == NULL){
+    error(parser.current, "You've got to be kidding, you thought this was a valid name?!?");
+  }
+
+  end = strtok(NULL, ".");
+  if(end == NULL){
+    char* old_idname = idname;
+    idname = (char*)malloc((strlen(parser.current_unit) + 9 + strlen(old_idname))* sizeof(char));
+    strcpy(idname, parser.current_unit);
+    strcpy(idname + strlen(parser.current_unit), ".private.");
+    strcpy(idname + strlen(parser.current_unit) + 9, old_idname);
+   // printf("n:%s\n", idname);
+    free(old_idname);
+  } else {
+    char* prev = end, *prev2 = prev;
+    while(end != NULL){
+      prev2 = prev;
+      prev = end;
+      end = strtok(NULL, ".");
+    }
+    if(strcmp(prev2, "private") == 0){
+      error(parser.previous, "Cannot use 'private' as submodule: confusing semantics!");
+    }
+  }
+  
+  free(idcpy);
+
+  return idname;
+}
+
 struct ExprNode* parse_atom() {
   int line = parser.current->line;
   advance();
@@ -52,13 +95,23 @@ struct ExprNode* parse_atom() {
       return expr;
     }
     case T_ID: {
+      char* idname = (char*)malloc((t->length+1) * sizeof(char));
+      strncpy(idname, t->start, t->length);
+      idname[t->length] = '\0';
+
+      idname = id_format(idname);
+      
       struct ExprNode* expr = (struct ExprNode*)malloc(sizeof(struct ExprNode));
-      *expr = (struct ExprNode){ .lineno = line, .type = IdentifierExpr, .as.id_expr.id = t };
+      *expr = (struct ExprNode){ .lineno = line, .type = IdentifierExpr, .as.id_expr.id = idname };
       return expr;
     }
     case T_STR: {
+      char* str = (char*)malloc((t->length+1) * sizeof(char));
+      strncpy(str, t->start, t->length);
+      str[t->length] = '\0';
+      
       struct ExprNode* expr = (struct ExprNode*)malloc(sizeof(struct ExprNode));
-      *expr = (struct ExprNode){ .lineno = line, .type = StringExpr, .as.string_expr.str = t };
+      *expr = (struct ExprNode){ .lineno = line, .type = StringExpr, .as.string_expr.str = str };
       return expr;
     }
     case T_NUM: {
@@ -241,14 +294,14 @@ struct ExprNode* parse_expression() {
 
 struct StmtNode* parse_statement() {
   int line = parser.current->line;
-
+  
   if (parser.current->type == T_IF) {
     advance();
     struct ExprNode* expr = parse_expression();
 
     expect(T_COLON, "Expect colon after if-statement!");
 
-    struct StmtNode* stmts = parse_block();
+    struct StmtNode* stmts = parse_block(0);
 
     expect(T_SEP, "Expect separator after if-statement block!");
 
@@ -262,7 +315,7 @@ struct StmtNode* parse_statement() {
         if(parser.current->type != T_COLON){
           struct ExprNode* cond = parse_expression();
           expect(T_COLON, "Expect colon after else-if clause!");
-          struct StmtNode* elsifstmts = parse_block();
+          struct StmtNode* elsifstmts = parse_block(0);
           expect(T_SEP, "Expect separator after else-if-statement block!");
 
           *elseptr = (struct StmtNode*)malloc(sizeof(struct StmtNode));
@@ -280,7 +333,7 @@ struct StmtNode* parse_statement() {
           }
         } else {
           expect(T_COLON, "Expect colon after else clause!");
-          struct StmtNode* elsestmts = parse_block();
+          struct StmtNode* elsestmts = parse_block(0);
           *elseptr = elsestmts;
           // lnohack
           if(parser.current->type != T_DEDENT && parser.current->type != T_SEP){
@@ -309,7 +362,7 @@ struct StmtNode* parse_statement() {
 
     expect(T_COLON, "Expect colon after while-statement!");
 
-    struct StmtNode* stmts = parse_block();
+    struct StmtNode* stmts = parse_block(0);
 
     struct StmtNode* stmt = (struct StmtNode*)malloc(sizeof(struct StmtNode));
     *stmt = (struct StmtNode){ .lineno = line, .type = WhileStmt, .as.while_stmt = { .cond = expr, .stmts = stmts} };
@@ -322,13 +375,19 @@ struct StmtNode* parse_statement() {
 
     expect(T_ID, "Function name must be valid identifier!");
     struct Token name = *parser.previous;
+    
+    char* idname = (char*)malloc((name.length+1) * sizeof(char));
+    strncpy(idname, name.start, name.length);
+    idname[name.length] = '\0';
+
+    idname = id_format(idname);
 
     expect(T_COLON, "Expect colon after function declaration!");
 
-    struct StmtNode* stmts = parse_block();
+    struct StmtNode* stmts = parse_block(0);
 
     struct StmtNode* stmt = (struct StmtNode*)malloc(sizeof(struct StmtNode));
-    *stmt = (struct StmtNode){ .lineno = line, .type = FnDecl, .as.fn_decl = { .name = name, .stmts = stmts, .is_lazy = is_lazy } };
+    *stmt = (struct StmtNode){ .lineno = line, .type = FnDecl, .as.fn_decl = { .name = idname, .stmts = stmts, .is_lazy = is_lazy } };
     return stmt;
   }
 
@@ -391,13 +450,30 @@ struct StmtNode* parse_statement() {
   return stmt;
 }
 
-struct StmtNode* parse_block() {
+struct StmtNode* parse_block(char is_toplevel) {
   struct StmtNode* stmt = (struct StmtNode*)malloc(sizeof(struct StmtNode));
   *stmt = (struct StmtNode){ .lineno = parser.current->line, .type = StmtList, .as.stmt_list = { .len = 1, .stmts = (struct StmtNode*)malloc(1 * sizeof(struct StmtNode))}};
 
   expect(T_INDENT, "Expect indent to begin block!");
 
   do {
+    if (parser.current->type == T_UNIT){
+      if(!is_toplevel){
+        error(parser.current, "Unit definition must be in a top-level block!");
+      }
+      
+      advance();
+      expect(T_ID, "Expect identifier for unit name");
+      free(parser.current_unit);
+      parser.current_unit = (char*)malloc((parser.previous->length + 1) * sizeof(char));
+      strncpy(parser.current_unit, parser.previous->start, parser.previous->length);
+      parser.current_unit[parser.previous->length] = '\0';
+
+      if(parser.current->type != T_EOF && parser.current->type != T_DEDENT){
+        expect(T_SEP, "Expect line separator to unit declaration.");
+      }
+    }
+    
     stmt->as.stmt_list.stmts[stmt->as.stmt_list.len - 1] = *parse_statement();
 
     //printStmtNode(&stmt->as.stmt_list.stmts[stmt->as.stmt_list.len - 1]);
@@ -419,5 +495,6 @@ struct StmtNode* parse_block() {
 
 struct StmtNode* parse() {
   advance();
-  return parse_block();
+  parser.current_unit = NULL;
+  return parse_block(1);
 }

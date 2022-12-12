@@ -113,10 +113,10 @@ struct Token* scan(void) {
   
   char c = peek();
 
-  if (c == '_' || isalpha(c)) {
+  if (c == '_' || isalpha(c) || c == '.' || c == '?') {
     char* current = scanner.current;
     int len = 0;
-    while (c == '_' || isalpha(c)) {
+    while (c == '_' || isalpha(c) || c == '.' || c == '?') {
       next();
       c = peek();
       len ++;
@@ -135,6 +135,8 @@ struct Token* scan(void) {
       return tok(T_DEF, current, len, scanner.line, scanner.col - len);
     } else if(len == 4 && strncmp(current, "lazy", 4) == 0) {
       return tok(T_LAZY, current, len, scanner.line, scanner.col - len);
+    } else if(len == 4 && strncmp(current, "unit", 4) == 0){
+      return tok(T_UNIT, current, len, scanner.line, scanner.col - len);
     }
 
     // context-sensitive lexing
@@ -393,6 +395,9 @@ void printTokType(TokenType typ) {
       printf("T_MY"); break;
     case T_NONE:
       printf("T_NONE"); break;
+    case T_UNIT:
+      printf("T_UNIT"); break;
+    
     case T_AND:
       printf("T_AND"); break;
     case T_OR:

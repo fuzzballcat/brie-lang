@@ -1,5 +1,0 @@
-defn multiargs:
-  my a; b; c
-  print (rc! -1)
-
-multiargs 1, 2, 3

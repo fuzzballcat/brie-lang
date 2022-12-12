@@ -75,11 +75,10 @@ void exprBytecode(struct ExprNode* node) {
       }
       break;
     case StringExpr: {
-      int len = node->as.string_expr.str->length;
+      int len = strlen(node->as.string_expr.str);
       char* str = malloc(len + 1);
-      // memcpy(str, node->as.string_expr.str->start, len);
       int i = 0;
-      for(char* ch = node->as.string_expr.str->start; ch < node->as.string_expr.str->start + len; ch ++, i ++){
+      for(char* ch = node->as.string_expr.str; ch < node->as.string_expr.str + len; ch ++, i ++){
         if(*ch == '\\'){
           ch ++;
           switch(*ch){
@@ -108,10 +107,7 @@ void exprBytecode(struct ExprNode* node) {
       break;
     }
     case IdentifierExpr: {
-      int len = node->as.id_expr.id->length;
-      char* str = malloc(len + 1);
-      memcpy(str, node->as.id_expr.id->start, len);
-      str[len] = '\0';
+      char* str = node->as.id_expr.id;
 
       if(strcmp(str, "print") == 0) {
         writeConstant(NATIVEFN_VALUE(str));
@@ -138,7 +134,7 @@ void exprBytecode(struct ExprNode* node) {
         writeChunk(OP_CONSTANT, node->lineno);
       }
 
-      else if(strcmp(str, "yield") == 0) {
+      else if(strcmp(str, "yields") == 0) {
         writeConstant(NATIVEFN_VALUE(str));
         writeChunk(OP_CONSTANT, node->lineno);
       }
@@ -167,7 +163,7 @@ void exprBytecode(struct ExprNode* node) {
       break;
     }
     case NumExpr: {
-      int len = node->as.id_expr.id->length;
+      int len = node->as.num_expr.num->length;
       double number = 0;
       for(int digit = 1, i = len - 1; i >= 0; i --, digit *= 10) {
         number += digit * (node->as.num_expr.num->start[i] - '0');
@@ -181,13 +177,8 @@ void exprBytecode(struct ExprNode* node) {
       exprBytecode(node->as.assignment_expr.b);
 
       for(int i = 0; i < node->as.assignment_expr.a_s_len; i ++){
-        struct Token* id = node->as.assignment_expr.a_s[i]->as.id_expr.id;
-
-        int len = id->length;
-        char* str = malloc(len + 1);
-        memcpy(str, id->start, len);
-        str[len] = '\0';
-  
+        char* str = node->as.assignment_expr.a_s[i]->as.id_expr.id;
+        
         writeConstant(STRING_VALUE(str));
         writeChunk(OP_ASSIGN, node->lineno);
         writeLong(currentChunk()->poollen - 1, node->lineno);
@@ -311,10 +302,7 @@ void generateBytecode(struct StmtNode* node) {
 
     case FnDecl: {
       writeChunk(DEF_LBL, node->lineno);
-      int len = node->as.fn_decl.name.length;
-      char* str = malloc(len + 1);
-      memcpy(str, node->as.fn_decl.name.start, len);
-      str[len] = '\0';
+      char* str = node->as.fn_decl.name;
       writeConstant(STRING_VALUE(str));
       writeLong(currentChunk()->poollen - 1, node->lineno);
 
