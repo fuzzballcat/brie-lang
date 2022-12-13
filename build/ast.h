@@ -109,7 +109,7 @@ struct StmtNode {
     } fn_decl;
 
     struct {
-      struct Token* name;
+      char** name;
       int num;
     } my_arg;
   } as;

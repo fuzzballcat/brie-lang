@@ -387,7 +387,7 @@ struct StmtNode* parse_statement() {
     struct sObj sobj = parser.current->sobj;
     advance();
 
-    struct Token* names = (struct Token*) malloc(sizeof(struct Token) * 1);
+    char** names = (char**) malloc(sizeof(char*) * 1);
     int names_size = 1, names_len = 0;
 
     do {
@@ -397,7 +397,11 @@ struct StmtNode* parse_statement() {
       }
       
       expect(T_ID, "ParsingError", "Identifiers may not start with a number and may contain any alphanumeric character, \"_\" and \"?\".", "Argument name must be valid identifier!");
-      names[names_len] = *parser.previous;
+      names[names_len] = (char*)malloc((parser.previous->sobj.len + 1) * sizeof(char));
+      strncpy(names[names_len], parser.previous->start, parser.previous->sobj.len);
+      names[names_len][parser.previous->sobj.len] = '\0';
+      names[names_len] = id_format(names[names_len]);
+      
       names_len ++;
 
       if(parser.current->type == T_SEMICOLON) advance();

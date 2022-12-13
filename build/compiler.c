@@ -327,12 +327,7 @@ void generateBytecode(struct StmtNode* node) {
 
     case MyArg: {
       for(int seminum = 0; seminum < node->as.my_arg.num; seminum ++){
-        struct Token id = node->as.my_arg.name[seminum];
-  
-        int len = id.sobj.len;
-        char* str = malloc(len + 1);
-        memcpy(str, id.start, len);
-        str[len] = '\0';
+        char* str = node->as.my_arg.name[seminum];
   
         writeConstant(STRING_VALUE(str));
         writeChunk(OP_MYARG, node->sobj);

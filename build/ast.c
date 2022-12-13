@@ -108,7 +108,7 @@ void printStmtNode(struct StmtNode* node) {
     case MyArg:
       printf("my ");
       for(int i = 0; i < node->as.my_arg.num; i ++){
-        printf("%.*s", (int)node->as.my_arg.name[i].sobj.len, node->as.my_arg.name[i].start);
+        printf("%s", node->as.my_arg.name[i]);
         if(i+1 < node->as.my_arg.num) printf("; ");
       }
       printf("\n");
