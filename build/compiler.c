@@ -62,6 +62,7 @@ void exprBytecode(struct ExprNode* node) {
       break;
     case FunctionCall:
       for (int seq_times = 0; seq_times < node->as.function_call.num_of_argsets; seq_times ++){
+        writeChunk(OP_STORESTACKBASE, node->sobj);
         for (int i = node->as.function_call.arguments[seq_times]->arity - 1; i >= 0; i --) {
           exprBytecode(node->as.function_call.arguments[seq_times]->arguments[i]);
         }

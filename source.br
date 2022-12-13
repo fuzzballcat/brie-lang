@@ -1,3 +1,30 @@
-a, b = 1, 2
+defn range:
+  my start; end
+  yields (end - start)
+  do start < end:
+    yields start
+    start = start + 1
 
-print a; b
+defn map:
+  my function; ln
+  do ln > 0:
+    my a
+    yields (function a)
+    ln = ln - 1
+
+lazy seq:
+  my ln
+  i = 0
+  do i < ln:
+    my a
+    i = i + 1
+  my _
+  i = 0
+  yields ln
+  do i < ln:
+    yields (rc (1 + i))
+    i = i + 1
+
+x = seq (range 1, 5)
+
+map print, (x! ())

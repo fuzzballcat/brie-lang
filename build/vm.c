@@ -91,7 +91,7 @@ void execute() {
     for(int k = 0; k < vm.stack_top; k ++) {
       if(k == vm.stack_base) printf("\x1b[33m[ \x1b[0m");
       else printf("[ ");
-      printValue(vm.stack[k]);
+      printValue((struct sObj){}, vm.stack[k]);
       printf(" ] ");
     }
     if(vm.stack_base == vm.stack_top) printf("\x1b[33m[ \x1b[0m");
@@ -180,7 +180,14 @@ vm.yieldvals[vm.yieldvals_top - 1];
         struct Value fn = pop();
         struct Value val = pop();
         i += 3;
-        double call_arity = vm.chunk->pool[PARSE_LONG(i - 1)].as.num.num;
+        //double call_arity = vm.chunk->pool[PARSE_LONG(i - 1)].as.num.num;
+        double call_arity = 1 + vm.stack_top - 
+vm.stackbasestack[vm.stackbasestack_top - 1];
+        vm.stackbasestack_top --;
+        if(vm.stackbasestack_top < 0) {
+          internal_error("StackError: Stackbasestack has reached negative size!");
+        }
+        //printf("CARR: %f\n", call_arity);
 
         if (vm.chunk->code[i - 2] && fn.type == PARAPP){ // force
           // note: force on regular function = no effect
@@ -569,7 +576,7 @@ vm.yieldvals[vm.yieldvals_top - 1];
   for(int k = 0; k < vm.stack_top; k ++) {
     if(k == vm.stack_base) printf("\x1b[33m[ \x1b[0m");
     else printf("[ ");
-    printValue(vm.stack[k]);
+    printValue((struct sObj){}, vm.stack[k]);
     printf(" ] ");
   }
   if(vm.stack_base == vm.stack_top) printf("\x1b[33m[ \x1b[0m");
