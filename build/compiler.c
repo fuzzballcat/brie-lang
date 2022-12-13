@@ -174,7 +174,9 @@ void exprBytecode(struct ExprNode* node) {
       break;
     }
     case AssignmentExpr: {
-      exprBytecode(node->as.assignment_expr.b);
+      for(int i = node->as.assignment_expr.b_s_len - 1; i >= 0; i --){
+        exprBytecode(node->as.assignment_expr.b_s[i]);
+      }
 
       for(int i = 0; i < node->as.assignment_expr.a_s_len; i ++){
         char* str = node->as.assignment_expr.a_s[i]->as.id_expr.id;

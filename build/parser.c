@@ -420,7 +420,7 @@ struct StmtNode* parse_statement() {
     while(parser.current->type == T_COMMA){
       advance();
 
-      exprs[exprs_top] = parse_funcall();
+      exprs[exprs_top] = parse_expression();
       if(!is_assignable(exprs[exprs_top])) general_error(parser.current->sobj, "AssignmentError", "Only valid identifiers may be assigned to.", "Cannot assign to non-assignable value!");
       
       exprs_top ++;
@@ -431,11 +431,25 @@ struct StmtNode* parse_statement() {
     }
       
     expect(T_EQ, "ParsingError", "If you wish to execute multiple statements, do not use a comma; place them on separate lines or use the semicolon sequenced call operator.", "Expect equals sign to commence assignment!");
+
     
-    struct ExprNode* value = parse_funcall();
+    struct ExprNode* value = parse_expression();
+    struct ExprNode** values = malloc(2 * sizeof(struct ExprNode*));
+    values[0] = value;
+    int values_top = 1, values_size = 2;
+    while(parser.current->type == T_COMMA){
+      advance();
+      values[values_top] = parse_expression();
+
+      values_top++;
+      if(values_top >= values_size){
+        values_size *= 2;
+        values = realloc(values, values_size * sizeof(struct ExprNode*));
+      }
+    }
     
     struct ExprNode* assignment = (struct ExprNode*)malloc(sizeof(struct ExprNode));
-    *assignment = (struct ExprNode){ .sobj = sobj, .type = AssignmentExpr, .as.assignment_expr = { .a_s = exprs, .a_s_len = exprs_top, .b = value } };
+    *assignment = (struct ExprNode){ .sobj = sobj, .type = AssignmentExpr, .as.assignment_expr = { .a_s = exprs, .a_s_len = exprs_top, .b_s = values, .b_s_len = values_top } };
 
     expr = assignment;
   }

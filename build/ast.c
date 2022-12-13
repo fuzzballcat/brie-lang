@@ -34,7 +34,10 @@ void printExprNode(struct ExprNode* node) {
         if(i+1 < node->as.assignment_expr.a_s_len) printf(", ");
       }
       printf(" = ");
-      printExprNode(node->as.assignment_expr.b);
+      for(int i = 0; i < node->as.assignment_expr.b_s_len; i ++){
+        printExprNode(node->as.assignment_expr.b_s[i]);
+        if(i+1 < node->as.assignment_expr.b_s_len) printf(", ");
+      }
       break;
     
     case IdentifierExpr:

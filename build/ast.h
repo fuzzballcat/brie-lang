@@ -42,7 +42,8 @@ struct ExprNode {
     struct {
       struct ExprNode** a_s;
       int a_s_len;
-      struct ExprNode* b;
+      struct ExprNode** b_s;
+      int b_s_len;
     } assignment_expr;
 
     struct {
