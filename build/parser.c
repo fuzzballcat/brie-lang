@@ -277,6 +277,11 @@ struct ExprNode* parse_expression() {
 struct StmtNode* parse_statement() {
   if (parser.current->type == T_IF) {
     advance();
+    // purely for error
+    if(parser.current->type == T_COLON) {
+      expect(T_SEP, "ParsingError", "An if-statement must consist of the keyword \"if\", an expression, and a colon.", "Expect colon after if-statement!");
+    }
+    
     struct ExprNode* expr = parse_expression();
 
     expect(T_COLON, "ParsingError", "An if-statement must consist of the keyword \"if\", an expression, and a colon.", "Expect colon after if-statement!");
@@ -339,6 +344,10 @@ struct StmtNode* parse_statement() {
   else if (parser.current->type == T_WHILE) {
     struct sObj sobj = parser.current->sobj;
     advance();
+    // purely for error
+    if(parser.current->type == T_COLON) {
+      expect(T_SEP, "ParsingError", "A while-statement must consist of the keyword \"while\", an expression, and a colon.", "Expect colon after while-statement!");
+    }
     struct ExprNode* expr = parse_expression();
 
     expect(T_COLON, "ParsingError", "A while statement consists of the keyword \"while\", an expression, and a colon.", "Expect colon after while-statement!");
