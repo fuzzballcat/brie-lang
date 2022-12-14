@@ -94,14 +94,12 @@ void exprBytecode(struct ExprNode* node) {
               break;
             case '{':
               if(*(ch + 1) == '{'){
-                str[i] = '\\';
-                ch --;
+                str[i] = '{';
                 break;
               }
             case '}':
               if(*(ch + 1) == '}'){
-                str[i] = '\\';
-                ch --;
+                str[i] = '}';
                 break;
               }
             
