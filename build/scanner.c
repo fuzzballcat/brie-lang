@@ -66,6 +66,10 @@ void skip_ws() {
   }
 }
 
+char is_valid_id_start(char c){
+  return c == '_' || isalpha(c) || c == '.' || c == '?' || c == '\'';
+}
+
 struct Token* scan(void) {
   if(EMIT_FAKE_OPAREN){
     EMIT_FAKE_OPAREN --;
@@ -116,14 +120,15 @@ struct Token* scan(void) {
   
   char c = peek();
 
-  if (c == '_' || isalpha(c) || c == '.' || c == '?' || c == '\'') {
+  char is_symbol = c == ':' && is_valid_id_start(peektwo());
+  if (is_valid_id_start(c) || is_symbol) {
     char* current = scanner.current;
     int len = 0;
-    while (c == '_' || isalpha(c) || c == '.' || c == '?' || c == '\'') {
+    do {
       next();
       c = peek();
       len ++;
-    }
+    } while (is_valid_id_start(c) || isdigit(c));
     if(len == 2 && strncmp(current, "if", 2) == 0) {
       return tok(T_IF, current, len, scanner.line, scanner.display_line, scanner.col - len, scanner.current_unit_name);
     } else if(len == 2 && strncmp(current, "or", 2) == 0) {
@@ -155,7 +160,7 @@ struct Token* scan(void) {
       strncpy(scanner.current_unit_name, current, len);
       scanner.current_unit_name[len] = '\0';
     }
-    return tok(T_ID, current, len, scanner.line, scanner.display_line, scanner.col - len, scanner.current_unit_name);
+    return tok(is_symbol ? T_SYM : T_ID, current, len, scanner.line, scanner.display_line, scanner.col - len, scanner.current_unit_name);
   }
 
   if (isdigit(c)) {
@@ -382,6 +387,8 @@ void printTokType(TokenType typ) {
       printf("T_SEP"); break;
     case T_ID:
       printf("T_ID"); break;
+    case T_SYM:
+      printf("T_SYM"); break;
     case T_EOF:
       printf("T_EOF"); break;
 

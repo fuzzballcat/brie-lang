@@ -1,2 +1,30 @@
-x = 1
-print "\{{{{"{{str ()}}"}}\}}"
+lazy leaf:
+  my _; _
+  yields :Leaf
+  yields :Nil; :Nil
+
+lazy node:
+  my a; _
+  yields :Node
+  yields (bintree a); (bintree a)
+
+defn bintree:
+  my n
+  if n == 1:
+    return (leaf ())
+  or:
+    return (node n-1)
+
+defn print_bintree:
+  my tree
+  t, l, r = tree! ()
+  if t == :Leaf:
+    print "Leaf"
+  or:
+    print "Node("
+    print_bintree l
+    print ","
+    print_bintree r
+    print ")"
+
+print_bintree (bintree 4)

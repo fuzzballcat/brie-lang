@@ -94,6 +94,7 @@ struct ExprNode* parse_atom() {
       *expr = (struct ExprNode){ .sobj = sobj, .type = IdentifierExpr, .as.id_expr.id = idname };
       return expr;
     }
+    case T_SYM: // blah, quickfix, todo: really
     case T_STR: {
       char* str = (char*)malloc((t->sobj.len+1) * sizeof(char));
       strncpy(str, t->start, t->sobj.len);

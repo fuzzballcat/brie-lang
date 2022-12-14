@@ -6,6 +6,7 @@
 typedef enum {
   T_SEP,
   T_ID,
+  T_SYM,
 
   T_LPAR,
   T_RPAR,
