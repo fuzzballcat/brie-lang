@@ -468,7 +468,7 @@ vm.stackbasestack[vm.stackbasestack_top - 1];
         struct Value right = pop();
         switch(left.type) {
           case STRING: {
-            if(right.type != STRING) general_error(line, "TypeError", "A string may only be operated with another string.", "Cannot apply operator %s to values of type %s and %s!", binopToStr(opcode), typeOf(left), typeOf(right));
+            if(right.type != STRING) general_error(line, "TypeError", "A string may only be concatenated or compared with another string.", "Cannot apply operator %s to values of type %s and %s!", binopToStr(opcode), typeOf(left), typeOf(right));
             if(opcode != BINARY_ADD && opcode != BINARY_EQEQ && opcode != BINARY_NE) general_error(line, "TypeError", "Strings may only be added and tested for [in]equality.", "Operator %s is not defined values of type string and string!", binopToStr(opcode));
 
             if(opcode == BINARY_ADD) {
@@ -493,7 +493,7 @@ vm.stackbasestack[vm.stackbasestack_top - 1];
             break;
           }
           case NUM:
-            if(right.type != NUM) general_error(line, "TypeError", "Numbers may only be operated with other numbers.", "Cannot apply binary op %s to values of type %s and %s!", binopToStr(opcode), typeOf(left), typeOf(right));
+            if(right.type != NUM) general_error(line, "TypeError", "Numbers may only be operated on with other numbers.", "Cannot apply binary op %s to values of type %s and %s!", binopToStr(opcode), typeOf(left), typeOf(right));
             double value = left.as.num.num;
             switch(opcode) {
               case BINARY_ADD:

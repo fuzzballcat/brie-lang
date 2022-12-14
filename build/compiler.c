@@ -92,6 +92,19 @@ void exprBytecode(struct ExprNode* node) {
             case 'r':
               str[i] = '\r';
               break;
+            case '{':
+              if(*(ch + 1) == '{'){
+                str[i] = '\\';
+                ch --;
+                break;
+              }
+            case '}':
+              if(*(ch + 1) == '}'){
+                str[i] = '\\';
+                ch --;
+                break;
+              }
+            
             default:
               general_error(node->sobj, "LexingError", "Valid escape characters are \\n, \\t, and \\r.", "Invalid string escape character %c!", *ch);
               break;

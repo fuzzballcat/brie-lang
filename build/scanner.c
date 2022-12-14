@@ -69,12 +69,12 @@ void skip_ws() {
 struct Token* scan(void) {
   if(EMIT_FAKE_OPAREN){
     EMIT_FAKE_OPAREN --;
-    return tok(T_LPAR, scanner.current - 1, 1, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
+    return tok(T_LPAR, scanner.current - 2, 2, scanner.line, scanner.display_line, scanner.col - 2, scanner.current_unit_name);
   }
 
   if(EMIT_FAKE_PLUS){
     EMIT_FAKE_PLUS --;
-    return tok(T_PLUS, scanner.current - 1, 1, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
+    return tok(T_PLUS, scanner.current - 2, 2, scanner.line, scanner.display_line, scanner.col - 2, scanner.current_unit_name);
   }
   
   if(FORCE_STRING){
@@ -309,23 +309,24 @@ struct Token* scan(void) {
         }
         
         if(peek() == '\n') {
+          next();
           scanner.col = 1;
           scanner.line ++;
           scanner.display_line ++;
-        }
+        } else next();
         
-        next();
         len ++;
       }
       if(peek() == '"') next(); // closing quote
-      return tok(T_STR, current, len, scanner.line, scanner.display_line, scanner.col - len - 2, scanner.current_unit_name);
+      return tok(T_STR, current, len, scanner.line, scanner.display_line, scanner.col - len - 1, scanner.current_unit_name);
     }
 
     case '{': {
       if(peektwo() == '{'){
-        next();
         EMIT_FAKE_OPAREN ++;
-        onechartok(T_PLUS);
+        struct Token* t = tok(T_PLUS, scanner.current, 2, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
+        next(); next();
+        return t;
       }
     }
 
@@ -333,8 +334,9 @@ struct Token* scan(void) {
       if(peektwo() == '}'){
         EMIT_FAKE_PLUS ++;
         FORCE_STRING ++;
-        next();
-        onechartok(T_RPAR);
+        struct Token* t = tok(T_RPAR, scanner.current, 2, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
+        next(); next();
+        return t;
       }
     }
 

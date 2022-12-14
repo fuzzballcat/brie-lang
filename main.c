@@ -268,6 +268,14 @@ strlen(this_module_name) + strlen(fstart)) * sizeof(char));
   char* srcnamecpy = (char*)malloc(strlen(argv[1]) * sizeof(char));
   strcpy(srcnamecpy, argv[1]); // so it can be freed
   initScanner(contents, srcnamecpy);
+#ifdef DEBUG_TOKENS
+  while(1){
+    struct Token* t = scan();
+    printToken(t);
+    if(t->type == T_EOF) break;
+  }
+  exit(1);
+#endif
   initChunk(&mainChunk);
   generateBytecode(parse());
   cleanupScanner();
