@@ -3,4 +3,8 @@ uses Seq
 
 x = Seq.seq (Seq.range 1, 5)
 
-Seq.map print, (x! ())
+defn index_print:
+  my index; value
+  print "At index {{str index}}: \{{{{str value}}"
+
+Seq.enumap index_print, (x! ())

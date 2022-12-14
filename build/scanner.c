@@ -13,6 +13,10 @@ int emitFakeNewline = 0;
 int dupTimes = 0;
 int EMIT_LAZY_BANG = 0;
 int EXPECT_UNITNAME_NEXT = 0;
+int FORCE_STRING = 0;
+
+int EMIT_FAKE_OPAREN = 0;
+int EMIT_FAKE_PLUS = 0;
 
 struct Token lastTok;
 
@@ -53,12 +57,6 @@ void skip_ws() {
       case '#': {
         char p;
         while((p = peek()) != '\n' && p != '\0') next();
-        while(peek() == '\n') {
-          next();
-          scanner.col = 1;
-          scanner.line ++;
-          scanner.display_line ++;
-        }
         break;
       }
 
@@ -69,6 +67,21 @@ void skip_ws() {
 }
 
 struct Token* scan(void) {
+  if(EMIT_FAKE_OPAREN){
+    EMIT_FAKE_OPAREN --;
+    return tok(T_LPAR, scanner.current - 1, 1, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
+  }
+
+  if(EMIT_FAKE_PLUS){
+    EMIT_FAKE_PLUS --;
+    return tok(T_PLUS, scanner.current - 1, 1, scanner.line, scanner.display_line, scanner.col, scanner.current_unit_name);
+  }
+  
+  if(FORCE_STRING){
+    FORCE_STRING --;
+    goto do_string;
+  }
+  
   if(EMIT_LAZY_BANG){
     EMIT_LAZY_BANG = 0;
     next();
@@ -103,10 +116,10 @@ struct Token* scan(void) {
   
   char c = peek();
 
-  if (c == '_' || isalpha(c) || c == '.' || c == '?') {
+  if (c == '_' || isalpha(c) || c == '.' || c == '?' || c == '\'') {
     char* current = scanner.current;
     int len = 0;
-    while (c == '_' || isalpha(c) || c == '.' || c == '?') {
+    while (c == '_' || isalpha(c) || c == '.' || c == '?' || c == '\'') {
       next();
       c = peek();
       len ++;
@@ -276,27 +289,53 @@ struct Token* scan(void) {
       onechartok(T_STAR);
     }
 
-    case '\'':
     case '"': {
       next();
+      do_string: ;
       char* current = scanner.current;
       int len = 0;
-      while (peek() != c) {
+      while (peek() != '"') {
         if (peek() == '\\') {
           next();
-          if(peek() == '\n') {
-            scanner.col = 1;
-            scanner.line ++;
-            scanner.display_line ++;
-          }
           len ++;
+
+          if(peek() == '{' && peektwo() == '{'){
+            next(); next(); len += 2;
+          }
+        }
+        
+        if (peek() == '{' && peektwo() == '{'){
+          break;
+        }
+        
+        if(peek() == '\n') {
+          scanner.col = 1;
+          scanner.line ++;
+          scanner.display_line ++;
         }
         
         next();
         len ++;
       }
-      next(); // closing quote
+      if(peek() == '"') next(); // closing quote
       return tok(T_STR, current, len, scanner.line, scanner.display_line, scanner.col - len - 2, scanner.current_unit_name);
+    }
+
+    case '{': {
+      if(peektwo() == '{'){
+        next();
+        EMIT_FAKE_OPAREN ++;
+        onechartok(T_PLUS);
+      }
+    }
+
+    case '}': {
+      if(peektwo() == '}'){
+        EMIT_FAKE_PLUS ++;
+        FORCE_STRING ++;
+        next();
+        onechartok(T_RPAR);
+      }
     }
 
     case '\0':

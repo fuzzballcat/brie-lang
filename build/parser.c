@@ -38,6 +38,7 @@ char* id_format(char* idname){
   char* idcpy = (char*)malloc((strlen(idname)+1) * sizeof(char));
   strcpy(idcpy, idname);
   
+  
   char* end = strtok(idcpy, ".");
   if(end == NULL){
     general_error(parser.previous->sobj, "LexingError", "A name may not be composed exclusively of the character '.'.  Consider evaluating your ability to function sanely.", "Invalid name \"%s\"", idname);
@@ -46,11 +47,11 @@ char* id_format(char* idname){
   end = strtok(NULL, ".");
   if(end == NULL){
     char* old_idname = idname;
-    idname = (char*)malloc((strlen(parser.current_unit) + 9 + strlen(old_idname))* sizeof(char));
+    idname = (char*)malloc((strlen(parser.current_unit) + 9 + strlen(old_idname) + 1) * sizeof(char));
     strcpy(idname, parser.current_unit);
     strcpy(idname + strlen(parser.current_unit), ".private.");
     strcpy(idname + strlen(parser.current_unit) + 9, old_idname);
-   // printf("n:%s\n", idname);
+    //printf("n:%s\n", idname);
     free(old_idname);
   } else {
     char* prev = end, *prev2 = prev;
@@ -393,7 +394,7 @@ struct StmtNode* parse_statement() {
     do {
       if(names_len >= names_size){
         names_size *= 2;
-        names = realloc(names, names_size * sizeof(struct Token));
+        names = realloc(names, names_size * sizeof(char*));
       }
       
       expect(T_ID, "ParsingError", "Identifiers may not start with a number and may contain any alphanumeric character, \"_\" and \"?\".", "Argument name must be valid identifier!");
